@@ -1,0 +1,12 @@
+BaseDN: "ou=People,dc=example,dc=com"
+ClientCaCert: "/etc/openldap/cacerts/cacert.pem"
+RemoteServerName: "ldaps.example.com"
+RemoteServerPortTLS: 636
+Debug: true
+PortTLS: 443
+PortInsecure: 386
+Cert: "/etc/bmcldap/server.pem"
+Key:  "/etc/bmcldap/server-key.pem"
+Groups:
+  bmcUsers: "cn=bmcUsers,ou=Group,dc=example,dc=com"
+  bmcAdmins: "cn=bmcAdmins,ou=Group,dc=example,dc=com"
