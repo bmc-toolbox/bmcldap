@@ -14,18 +14,95 @@
 
 package supermicro
 
+//Supermicro BMC LDAP auth steps
+//1. Binds with configured Bind DN - Bind DN needs to be set to "supermicro"
+//2. Searchs on the Search Base    - Searchbase needs to be set to cn=supermicro,cn=bmcUsers
+//3. Binds with username, password credentials.
+
 import (
 	"context"
+	"fmt"
 	"github.com/samuel/go-ldap/ldap"
+	"github.com/sirupsen/logrus"
+	"strings"
 )
 
-type Supermicro struct{}
+type Supermicro struct {
+	LdapClient    *ldap.Client
+	Logger        *logrus.Logger
+	BaseDN        string
+	AuthorizedDNs map[string]string
+}
 
-func (s *Supermicro) Authenticate(ctx context.Context, username string, password string) bool {
+//When configuring the supermicro, use the 'supermicro' username
+func (s *Supermicro) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
 	return true
 }
 
+func extractUsername(filter string) string {
+	username := strings.Split(filter, "cn=")[1]
+	username = strings.Trim(username, ")")
+	return username
+}
+
 func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
+	//sess, ok := ctx.(*servercontext.Session)
+	//if !ok {
+	//	return nil, errors.New("Invalid sessions type.")
+	//}
+
+	//In its first Search request, the supermicro does a search with the login username
+	//as its search filter, here we extract the username from that request.
+	//sess.context = servercontext.SetDn(sess.context, fmt.Sprintf("%s", req.Filter))
+	username := extractUsername(fmt.Sprintf("%s", req.Filter))
+
+	//look up the group base DN in our map of authorized DNs
+	for group, groupBaseDN := range s.AuthorizedDNs {
+		var lookupDN string
+
+		if strings.Contains(strings.ToLower(req.BaseDN), group) {
+			lookupDN = groupBaseDN
+		} else {
+			continue
+		}
+
+		filter := &ldap.EqualityMatch{
+			Attribute: "memberUid",
+			Value:     []byte(username),
+		}
+
+		searchRequest := ldap.SearchRequest{
+			BaseDN:       lookupDN,
+			Scope:        ldap.ScopeWholeSubtree,
+			DerefAliases: ldap.DerefAlways,
+			SizeLimit:    0,
+			TimeLimit:    0,
+			TypesOnly:    false,
+			Filter:       filter,
+			Attributes:   req.Attributes,
+		}
+
+		s.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
+		sr, err := s.LdapClient.Search(&searchRequest)
+		if err != nil {
+			s.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+			continue
+		}
+
+		if len(sr) > 0 {
+			s.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
+			s.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
+			sr[0].DN = username
+			//yeah! supermicro expects these special attributes
+			sr[0].Attributes["permission"] = [][]byte{[]byte("H=4")}
+			return sr, nil
+		}
+
+		s.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
+
+	}
+
+	fmt.Println(username)
 	searchResults := ldap.SearchResult{}
 	return []*ldap.SearchResult{&searchResults}, nil
 }
