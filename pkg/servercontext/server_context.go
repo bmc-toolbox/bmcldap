@@ -10,6 +10,7 @@ const (
 	contextKeyId = serverContextKey(iota)
 	contextKeyDn
 	contextKeyAddr
+	contextKeyVendor
 )
 
 func SetDn(ctx context.Context, dn string) context.Context {

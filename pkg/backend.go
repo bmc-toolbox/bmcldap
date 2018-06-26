@@ -21,17 +21,26 @@ import (
 	"net"
 	"strings"
 
+	"github.com/bmc-toolbox/bmcldap/pkg/dell"
+	"github.com/bmc-toolbox/bmcldap/pkg/generic"
 	"github.com/bmc-toolbox/bmcldap/pkg/hp"
 	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
+	"github.com/bmc-toolbox/bmcldap/pkg/supermicro"
+
 	"github.com/samuel/go-ldap/ldap"
 )
 
 type Authenticator interface {
-	Authenticate(ctx context.Context, username string, password string) bool
+	Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool
 	Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error)
 }
 
-func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (ldapResponse *ldap.BindResponse, err error) {
+type session struct {
+	context context.Context
+	cancel  context.CancelFunc
+}
+
+func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindResponse *ldap.BindResponse, err error) {
 
 	log := bmcLdap.logger
 	sess, ok := ctx.(*session)
@@ -39,10 +48,10 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (ldapRespo
 		return nil, errors.New("Invalid sessions type.")
 	}
 
-	log.Debug("BIND DN:", req.DN)
+	log.Debug(fmt.Sprintf("BIND request: %s", req.DN))
 
 	//setup the response
-	ldapResponse = &ldap.BindResponse{
+	bindResponse = &ldap.BindResponse{
 		BaseResponse: ldap.BaseResponse{
 			Code: ldap.ResultInvalidCredentials,
 		},
@@ -56,28 +65,55 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (ldapRespo
 	bindUsername = req.DN
 	bindPassword = req.Password
 
+	//setup connection to the remote ldap server
 	remoteLdapClient, err := bmcLdap.ConnectRemoteServer()
 	if err != nil {
-		return ldapResponse, err
+		log.Debug(fmt.Sprintf("Remote ldap server connection failed: %s", err))
+		return bindResponse, err
 	}
 
-	bindDN := fmt.Sprintf("uid=%s,%s", bindUsername, bmcLdap.config.BaseDN)
-	log.Debug(fmt.Sprintf("Attempting bind with remote ldap server for %s", bindDN))
+	var auth Authenticator
+	switch bindUsername {
+	case "supermicro":
+		auth = &supermicro.Supermicro{Logger: bmcLdap.logger,
+			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
+			LdapClient:    remoteLdapClient,
+		}
+	case "dell":
+		auth = &dell.Dell{Logger: bmcLdap.logger,
+			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
+			LdapClient:    remoteLdapClient,
+		}
+	default:
+		auth = &generic.Generic{Logger: bmcLdap.logger,
+			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
+			LdapClient:    remoteLdapClient,
+		}
 
-	err = remoteLdapClient.Bind(bindDN, bindPassword)
-	if err != nil {
-		return ldapResponse, err
 	}
 
 	//defer remoteLdapClient.Close()
 
-	sess.context = servercontext.SetDn(sess.context, req.DN)
-	ldapResponse.BaseResponse.Code = ldap.ResultSuccess
-	ldapResponse.MatchedDN = req.DN
+	//Since HP iLOs will attempt the first BIND with just the username,
+	//we look for strings that don't seem to be a DN
+	var bindDN string
+	if strings.Contains(bindUsername, "=") == false {
+		bindDN = fmt.Sprintf("uid=%s,%s", bindUsername, bmcLdap.config.BaseDN)
+	} else {
+		bindDN = bindUsername
+	}
+	if auth.Authenticate(sess.context, bindDN, bindPassword) {
+		sess.context = servercontext.SetDn(sess.context, req.DN)
+		bindResponse.BaseResponse.Code = ldap.ResultSuccess
+		bindResponse.MatchedDN = req.DN
 
-	log.Debug(fmt.Sprintf("Successful bind with remote ldap server for %s", bindDN))
-
-	return ldapResponse, err
+		log.Debug(fmt.Sprintf("Successful bind with remote ldap server for %s", bindDN))
+		log.Debug(fmt.Sprintf("Bind accept response %#v", bindResponse))
+		return bindResponse, err
+	} else {
+		log.Debug(fmt.Sprintf("BIND reject response %#v", bindResponse))
+		return bindResponse, err
+	}
 }
 
 // Returns a client to a remote ldap server
@@ -109,7 +145,7 @@ func (bmcLdap *BmcLdap) Connect(remoteAddr net.Addr) (ldap.Context, error) {
 	log.Debug(fmt.Sprintf("Client connected : %s", remoteAddr))
 
 	session := &session{context: ctx, cancel: cancel}
-	session.context = servercontext.SetAddr(session.context, fmt.Sprintf("%s", remoteAddr))
+	//session.context = servercontext.SetAddr(session.context, fmt.Sprintf("%s", remoteAddr))
 
 	return session, nil
 }
@@ -119,10 +155,10 @@ func (bmcLdap *BmcLdap) Disconnect(ctx ldap.Context) {
 	if !ok {
 		return
 	}
-	log := bmcLdap.logger
-	log.Debug(fmt.Sprintf("Client disconnected, user: %s, ip: %s",
-		servercontext.GetDn(sess.context), servercontext.GetAddr(sess.context)))
-	bmcLdap.client.Close()
+	//log := bmcLdap.logger
+	//	log.Debug(fmt.Sprintf("Client disconnected, user: %s, ip: %s",
+	//		servercontext.GetDn(sess.context), servercontext.GetAddr(sess.context)))
+	//bmcLdap.client.Close()
 	sess.cancel()
 }
 
@@ -132,6 +168,7 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 		return nil, errInvalidSessionType
 	}
 
+	bmcLdap.logger.Debug(fmt.Sprintf("SEARCH request: %#v", req))
 	if servercontext.GetDn(sess.context) == "" || req.BaseDN == "" {
 		return &ldap.SearchResponse{
 			BaseResponse: ldap.BaseResponse{
@@ -143,7 +180,25 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 	var auth Authenticator
 	//identify vendor
 	if strings.Contains(req.BaseDN, "cn=hp") {
+		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as HP based on baseDN: %s", req.BaseDN))
 		auth = &hp.Hp{Logger: bmcLdap.logger,
+			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
+			LdapClient:    bmcLdap.client,
+		}
+	}
+
+	if strings.Contains(req.BaseDN, "cn=supermicro") {
+		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as Supermicro based on baseDN: %s", req.BaseDN))
+		auth = &supermicro.Supermicro{Logger: bmcLdap.logger,
+			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
+			LdapClient:    bmcLdap.client,
+		}
+	}
+
+	if strings.Contains(req.BaseDN, "cn=dell") {
+		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as Dell based on baseDN: %s", req.BaseDN))
+		auth = &dell.Dell{Logger: bmcLdap.logger,
+			BaseDN:        bmcLdap.config.BaseDN,
 			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
 			LdapClient:    bmcLdap.client,
 		}

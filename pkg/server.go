@@ -51,11 +51,6 @@ type BmcLdap struct {
 	context context.Context
 }
 
-type session struct {
-	context context.Context
-	cancel  context.CancelFunc
-}
-
 // returns a ldap.Server
 func NewLdapServer(logger *logrus.Logger, config *Config) *BmcLdap {
 	ldapBackend := &BmcLdap{context: context.Background(), logger: logger, config: config}
