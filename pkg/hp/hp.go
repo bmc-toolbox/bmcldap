@@ -31,7 +31,7 @@ type Hp struct {
 	AuthorizedDNs map[string]string
 }
 
-func (h *Hp) Authenticate(ctx context.Context, username string, password string) bool {
+func (h *Hp) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
 
 	//var bindUsername string
 	//var bindPassword []byte
@@ -48,7 +48,8 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 	//look up the group base DN in our map of authorized DNs
 	for group, groupBaseDN := range h.AuthorizedDNs {
 		var lookupDN string
-		if strings.Contains(req.BaseDN, group) {
+
+		if strings.Contains(strings.ToLower(req.BaseDN), group) {
 			lookupDN = groupBaseDN
 		} else {
 			continue
@@ -70,18 +71,21 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 			Attributes:   req.Attributes,
 		}
 
-		log.Debug(fmt.Sprintf("Querying remote ldap with search request: %+v", searchRequest))
+		log.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
 		sr, err := h.LdapClient.Search(&searchRequest)
 		if err != nil {
-			log.Warn(fmt.Sprintf("User: %s not in authorized group: %s", username, lookupDN))
+			log.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
 			continue
 		}
 
-		log.Debug(fmt.Sprintf("Remote ldap search request result: %+v", sr))
 		if len(sr) > 0 {
+			log.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
+			log.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
 			sr[0].DN = req.BaseDN
 			return sr, nil
 		}
+
+		log.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
 
 	}
 
