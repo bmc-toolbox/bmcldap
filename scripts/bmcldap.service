@@ -1,0 +1,15 @@
+[Unit]
+Description=BMC LDAP proxy
+After=network.target
+
+[Service]
+PrivateTmp=true
+Type=simple
+ExecStart=/usr/sbin/bmcldap serve -d /etc/bmcldap/bmcldap.yml 
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s SIGINT $MAINPID
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
