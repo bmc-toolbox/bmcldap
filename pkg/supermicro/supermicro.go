@@ -15,9 +15,20 @@
 package supermicro
 
 //Supermicro BMC LDAP auth steps
+// Since the supermicro doesn't let use configure multiple role groups,
+// only one role group is configured.
 //1. Binds with configured Bind DN - Bind DN needs to be set to "supermicro"
 //2. Searchs on the Search Base    - Searchbase needs to be set to cn=supermicro,cn=bmcUsers
 //3. Binds with username, password credentials.
+
+//Configuration
+//Configuration -> Ldap
+// Enable LDAP Authentication
+// Port: LDAP/LDAPs port
+// IP Address: LDAP server address
+// Bind Password: leave undefined
+// Bind DN: "supermicro"
+// Search Base: "cn=supermicro,cn=bmcUsers"
 
 import (
 	"context"

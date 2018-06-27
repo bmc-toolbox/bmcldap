@@ -15,8 +15,9 @@ bmcldap sits in between the BMCs and the LDAP server, it looks at each request, 
 
 Supported BMCs
 --------------
-    HP
-    Supermicro (WIP)
+    HP - iLO4,5
+    Supermicro
+    Dell - iDrac8
 
 Configuration
 -------------
@@ -27,22 +28,63 @@ a. bmcldap
     A root CA certs (server.pem, server-key.pem) to authenticate ldap clients (BMCs in this case) see the snakeoil directory for certs to test with.
 
 
-b. ldap clients (BMCs in this case)
+b. BMC configuration
 
-    HP
-        Group directory search base : cn=hp,cn=bmcUsers
-        CA client certs needs to be uploaded (see snakeoil dir for certs to test with)
-        ldaps works
+*iDrac*
+```
+iDrac Settings -> User Authentication
+ Enable Generic LDAP
+ Use DN to Search Group Membership
+ LDAP Server Address
+ LDAP Server Port
+ Bind DN : "dell"
+ Bind Password: ""
+ Base DN to Search: "cn=dell"
+ Attribute of User Login: "uid"
+ Attribute of Group Membership: "memberUid"
+ Search Filter: "objectClass=posixAccount"
 
-    Supermicro
-        Search base: cn=Supermicro,cn=bmcUsers
-        ldaps not tested, plain ldap works.
+Role Group Privileges, create groups,
+ Group DN: "cn=dell,cn=bmcAdmins"
+ Group DN: "cn=dell,cn=bmcUsers"
+```
+
+*iLO*
+```
+Directory groups:
+  - cn=hp,cn=bmcAdmins
+  - cn=hp,cn=bmcUsers
+
+Security -> Directory -> Authentication Options
+ Enable Local User Accounts
+
+Security -> Directory -> Directory Server settings
+ Enable Generic LDAP
+ Set Directory Server Address
+ Set Directory Server LDAP Port
+```
+
+*Supermicro*
+Supermicro BMCs only allow addition of a single ldap group.
+```
+Configuration -> Ldap
+ Enable LDAP Authentication
+ Port: LDAP/LDAPs port
+ IP Address: LDAP server address
+ Bind Password: leave undefined
+ Bind DN: "supermicro"
+ Search Base: "cn=supermicro,cn=bmcUsers"
+```
 
 Run
 ---
 
-./bmcldap -c /etc/bmcldap/bmcldap.yml
+```
+./bmcldap serve -c /etc/bmcldap/bmcldap.yml
 
+#enable debug output
+./bmcldap serve -d -c /etc/bmcldap/bmcldap.yml
+```
 Acknowledgement
 ---------------
 bmcldap was originally developed for [Booking.com](http://www.booking.com).

@@ -15,9 +15,29 @@
 package dell
 
 //Dell BMC LDAP auth steps
-//1. Bind                          - Bind DN needs to be set to "dell"
-//2. Searches the BASE DN          -  Base DN needs to be set to "cn=dell"
-//3. Binds with username, password credentials. - uid=username,ou=People,dc=example,dc=com
+//1. BMC attempts to Bind with the defined Bind DN - Bind DN is set to "dell" to identify the vendor.
+//    - bmcldap just returns success for this step.
+//2. BMC Searches the BASE DN for the login username
+//    - Base DN needs to be set to "cn=dell" - to identify the vendor.
+//    - bmcldap rewrites the BASE DN in the search request to the one defined, in bmcldap configuration parameter - BaseDN.
+//      the search request is then passed to the remote ldap server and the reply passed back to the BMC
+//3. BMC Binds with username, password credentials. - uid=username,ou=People,dc=example,dc=com
+
+//Configuration
+//iDrac Settings -> User Authentication
+// Enable Generic LDAP
+// Use DN to Search Group Membership
+// LDAP Server Address
+// LDAP Server Port
+// Bind DN : "dell"
+// Bind Password: ""
+// Base DN to Search: "cn=dell"
+// Attribute of User Login: "uid"
+// Attribute of Group Membership: "memberUid"
+// Search Filter: "objectClass=posixAccount"
+//Role Group Privileges, create groups,
+// Group DN: "cn=dell,cn=bmcAdmins"
+// Group DN: "cn=dell,cn=bmcUsers"
 
 import (
 	"context"
