@@ -45,7 +45,7 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 	log := bmcLdap.logger
 	sess, ok := ctx.(*session)
 	if !ok {
-		return nil, errors.New("Invalid sessions type.")
+		return nil, errInvalidSessionType
 	}
 
 	log.Debug(fmt.Sprintf("BIND request: %s", req.DN))
