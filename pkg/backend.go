@@ -21,11 +21,11 @@ import (
 	"net"
 	"strings"
 
-	"github.com/bmc-toolbox/bmcldap/pkg/dell"
-	"github.com/bmc-toolbox/bmcldap/pkg/generic"
-	"github.com/bmc-toolbox/bmcldap/pkg/hp"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers/dell"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers/generic"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers/hp"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers/supermicro"
 	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
-	"github.com/bmc-toolbox/bmcldap/pkg/supermicro"
 
 	"github.com/samuel/go-ldap/ldap"
 )
@@ -65,30 +65,14 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 	bindUsername = req.DN
 	bindPassword = req.Password
 
-	//setup connection to the remote ldap server
-	remoteLdapClient, err := bmcLdap.ConnectRemoteServer()
-	if err != nil {
-		log.Debug(fmt.Sprintf("Remote ldap server connection failed: %s", err))
-		return bindResponse, err
-	}
-
 	var auth Authenticator
 	switch bindUsername {
 	case "supermicro":
-		auth = &supermicro.Supermicro{Logger: bmcLdap.logger,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    remoteLdapClient,
-		}
+		auth = &supermicro.Supermicro{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	case "dell":
-		auth = &dell.Dell{Logger: bmcLdap.logger,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    remoteLdapClient,
-		}
+		auth = &dell.Dell{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	default:
-		auth = &generic.Generic{Logger: bmcLdap.logger,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    remoteLdapClient,
-		}
+		auth = &generic.Generic{Logger: bmcLdap.logger, Config: bmcLdap.config}
 
 	}
 
@@ -114,29 +98,6 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 		log.Debug(fmt.Sprintf("BIND reject response %#v", bindResponse))
 		return bindResponse, err
 	}
-}
-
-// Returns a client to a remote ldap server
-func (bmcLdap *BmcLdap) ConnectRemoteServer() (client *ldap.Client, err error) {
-
-	log := bmcLdap.logger
-
-	tlsCfg, err := clientTlsConfig(bmcLdap.config.ClientCaCert, bmcLdap.config.RemoteServerName)
-	if err != nil {
-		log.Warn(fmt.Sprintf("Unable to connect to remote ldap server: %s", err))
-		return client, err
-	}
-
-	serverAddress := fmt.Sprintf("%s:%d", bmcLdap.config.RemoteServerName, bmcLdap.config.RemoteServerPortTLS)
-	client, err = ldap.DialTLS("tcp", serverAddress, tlsCfg)
-	if err != nil {
-		log.Warn(fmt.Sprintf("Unable to connect to remote ldap server: %s", err))
-		return client, err
-	}
-
-	bmcLdap.client = client
-	log.Debug("Connected to remote ldap server.")
-	return client, err
 }
 
 func (bmcLdap *BmcLdap) Connect(remoteAddr net.Addr) (ldap.Context, error) {
@@ -181,27 +142,17 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 	//identify vendor
 	if strings.Contains(req.BaseDN, "cn=hp") {
 		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as HP based on baseDN: %s", req.BaseDN))
-		auth = &hp.Hp{Logger: bmcLdap.logger,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    bmcLdap.client,
-		}
+		auth = &hp.Hp{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	}
 
 	if strings.Contains(req.BaseDN, "cn=supermicro") {
 		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as Supermicro based on baseDN: %s", req.BaseDN))
-		auth = &supermicro.Supermicro{Logger: bmcLdap.logger,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    bmcLdap.client,
-		}
+		auth = &supermicro.Supermicro{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	}
 
 	if strings.Contains(req.BaseDN, "cn=dell") {
 		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as Dell based on baseDN: %s", req.BaseDN))
-		auth = &dell.Dell{Logger: bmcLdap.logger,
-			BaseDN:        bmcLdap.config.BaseDN,
-			AuthorizedDNs: bmcLdap.config.AuthorizedDNs,
-			LdapClient:    bmcLdap.client,
-		}
+		auth = &dell.Dell{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	}
 
 	if auth == nil {

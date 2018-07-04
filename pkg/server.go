@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 
+	. "github.com/bmc-toolbox/bmcldap/pkg/config"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
@@ -27,21 +28,6 @@ import (
 var (
 	errInvalidSessionType = errors.New("Invalid sessions type.")
 )
-
-type Config struct {
-	Debug               bool
-	PortTLS             int
-	PortInsecure        int
-	BaseDN              string
-	AuthorizedDNs       map[string]string //the ldap groups we want to authorize
-	Config              string
-	RemoteServerName    string
-	RemoteServerPortTLS int
-	CaCert              string
-	ClientCaCert        string
-	Cert                string
-	Key                 string
-}
 
 type BmcLdap struct {
 	server  *ldap.Server

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/bmc-toolbox/bmcldap/pkg"
+	. "github.com/bmc-toolbox/bmcldap/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -41,7 +42,7 @@ func serve() {
 	debug = viper.GetBool("Debug")
 
 	//TODO: add config validator
-	config := pkg.Config{
+	config := Config{
 		BaseDN:              viper.GetString("BaseDN"),
 		ClientCaCert:        viper.GetString("ClientCaCert"),
 		RemoteServerName:    viper.GetString("RemoteServerName"),
