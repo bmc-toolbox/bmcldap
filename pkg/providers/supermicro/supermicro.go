@@ -17,6 +17,7 @@ package supermicro
 //Supermicro BMC LDAP auth steps
 // Since the supermicro doesn't let use configure multiple role groups,
 // only one role group is configured.
+// We identify Supermicro BMCs by the Bind DN (compared to Idrac, iLOs which we identify by Base DN)
 //1. Binds with configured Bind DN - Bind DN needs to be set to "supermicro"
 //2. Searchs on the Search Base    - Searchbase needs to be set to cn=supermicro,cn=bmcUsers
 //3. Binds with username, password credentials.

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //HP BMC LDAP auth steps
+// HP BMCs are identified by the Base DN
 //1. BMC Binds with login username (Authentication)
 //  - bmcldap will use the 'generic' Authenticate method to bind with the remote ldap server
 //2. BMC Searches the Search Base for the configured ldap groups - cn=hp,cn=bmcAdmins / cn=hp,cn=bmcUsers (Authorization) - bmcldap passes the search request to the 'hp' Authorize method to lookup the user in the configured Groups.
@@ -21,6 +22,8 @@
 //Directory groups:
 //  - cn=hp,cn=bmcAdmins
 //  - cn=hp,cn=bmcUsers
+//Directory User context 1
+//  - cn=hp
 //Security -> Directory -> Authentication Options
 // Enable Local User Accounts
 //Security -> Directory -> Directory Server settings
