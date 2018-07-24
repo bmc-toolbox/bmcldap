@@ -55,7 +55,7 @@ func setupLogger() {
 	logger = logrus.New()
 	logger.Out = os.Stdout
 
-	hook, err := logrusSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "bmc-ldap")
+	hook, err := logrusSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "bmcldap")
 	if err != nil {
 		logger.Error("Unable to connect to local syslog daemon.")
 	} else {
