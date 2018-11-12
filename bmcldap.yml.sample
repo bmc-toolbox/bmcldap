@@ -10,3 +10,6 @@ Key:  "/etc/bmcldap/server-key.pem"
 Groups:
   bmcUsers: "cn=bmcUsers,ou=Group,dc=example,dc=com"
   bmcAdmins: "cn=bmcAdmins,ou=Group,dc=example,dc=com"
+IgnoreFilters:  #ignore ldap search request filters with these strings
+  - "uid=foobar"
+  - "Administrator"

@@ -53,6 +53,7 @@ func serve() {
 		Cert:                viper.GetString("Cert"),
 		Key:                 viper.GetString("Key"),
 		AuthorizedDNs:       viper.GetStringMapString("Groups"),
+		IgnoreFilters:       viper.GetStringSlice("IgnoreFilters"),
 	}
 
 	server := pkg.NewLdapServer(logger, &config)

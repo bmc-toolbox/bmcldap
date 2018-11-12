@@ -27,4 +27,5 @@ type Config struct {
 	ClientCaCert        string
 	Cert                string
 	Key                 string
+	IgnoreFilters       []string
 }

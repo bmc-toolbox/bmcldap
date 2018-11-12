@@ -128,6 +128,16 @@ func (bmcLdap *BmcLdap) Disconnect(ctx ldap.Context) {
 	sess.cancel()
 }
 
+func (bmcLdap *BmcLdap) ignoreSearchReq(filter string) bool {
+	for _, ignoreFilter := range bmcLdap.config.IgnoreFilters {
+		if strings.Contains(filter, ignoreFilter) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *ldap.SearchResponse, err error) {
 	sess, ok := ctx.(*session)
 	if !ok {
@@ -139,6 +149,14 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 		return &ldap.SearchResponse{
 			BaseResponse: ldap.BaseResponse{
 				Code: ldap.ResultInsufficientAccessRights,
+			},
+		}, nil
+	}
+
+	if bmcLdap.ignoreSearchReq(fmt.Sprintf("%s", req.Filter)) {
+		return &ldap.SearchResponse{
+			BaseResponse: ldap.BaseResponse{
+				Code: ldap.ResultUnwillingToPerform,
 			},
 		}, nil
 	}
