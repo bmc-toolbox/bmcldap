@@ -71,6 +71,8 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		return []*ldap.SearchResult{&searchResults}, err
 	}
 
+	defer ldapClient.Close()
+
 	d.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", req))
 	sr, err := ldapClient.Search(req)
 	if err != nil {

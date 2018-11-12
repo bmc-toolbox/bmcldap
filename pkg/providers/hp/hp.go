@@ -67,6 +67,8 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 		return []*ldap.SearchResult{&searchResults}, err
 	}
 
+	defer ldapClient.Close()
+
 	//look up the group base DN in our map of authorized DNs
 	for group, groupBaseDN := range h.Config.AuthorizedDNs {
 		var lookupDN string

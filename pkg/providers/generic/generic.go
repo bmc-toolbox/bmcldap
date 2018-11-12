@@ -17,6 +17,7 @@ package generic
 import (
 	"context"
 	"fmt"
+
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 
@@ -36,6 +37,8 @@ func (g *Generic) Authenticate(ctx context.Context, bindDN string, bindPassword 
 		g.Logger.Warn(err)
 		return false
 	}
+
+	defer ldapClient.Close()
 
 	g.Logger.Debug(fmt.Sprintf("Attempting bind with remote ldap server for %s", bindDN))
 

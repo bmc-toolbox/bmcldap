@@ -76,6 +76,8 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 		return []*ldap.SearchResult{&searchResults}, err
 	}
 
+	defer ldapClient.Close()
+
 	//look up the group base DN in our map of authorized DNs
 	for group, groupBaseDN := range s.Config.AuthorizedDNs {
 		var lookupDN string
