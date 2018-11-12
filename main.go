@@ -14,8 +14,51 @@
 
 package main
 
-import "github.com/bmc-toolbox/bmcldap/cmd"
+import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+
+	"github.com/bmc-toolbox/bmcldap/cmd"
+)
 
 func main() {
+
+	setupProfiling()
 	cmd.Execute()
+}
+
+// setup pprof
+// log mem, goroutine stats when SIGUSR1 is recieved
+func setupProfiling() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	sigDumpStatsChan := make(chan os.Signal, 1)
+	signal.Notify(sigDumpStatsChan, syscall.SIGUSR1)
+	go func() {
+		for {
+			_ = <-sigDumpStatsChan
+			log.Printf("Goroutines: %d", runtime.NumGoroutine())
+			dumpMemUsage()
+		}
+	}()
+}
+
+func dumpMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	log.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	log.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	log.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	log.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }
