@@ -61,7 +61,7 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 	searchResults := ldap.SearchResult{}
 	username := servercontext.GetDn(ctx)
 
-	ldapClient, err := ConnectRemoteServer(h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
+	ldapClient, err := ConnectRemoteServer(ctx, h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
 	if err != nil {
 		h.Logger.Warn(err)
 		return []*ldap.SearchResult{&searchResults}, err

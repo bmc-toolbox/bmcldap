@@ -64,7 +64,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 	searchResults := ldap.SearchResult{}
 	req.BaseDN = d.Config.BaseDN
 
-	ldapClient, err := ConnectRemoteServer(d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
+	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	if err != nil {
 		d.Logger.Warn(err)
 

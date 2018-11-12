@@ -15,35 +15,51 @@
 package providers
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 
 	"github.com/samuel/go-ldap/ldap"
 )
 
-// Returns a client to a remote ldap server
-func ConnectRemoteServer(clientCaCert string, server string, port int) (client *ldap.Client, err error) {
+// ConnectRemoteServer returns a client to a remote ldap server
+func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string, port int) (client *ldap.Client, err error) {
 
-	tlsCfg, err := clientTlsConfig(clientCaCert, server)
-	if err != nil {
-		return client, errors.New(fmt.Sprintf("Unable to connect to remote ldap server: %s", err))
+	clientChan := make(chan *ldap.Client)
+
+	go func(clientChan chan<- *ldap.Client) {
+		tlsCfg, err := clientTLSConfig(clientCaCert, server)
+		if err != nil {
+			log.Printf("Unable to connect to remote ldap server: %s", err)
+			return
+		}
+
+		serverAddress := fmt.Sprintf("%s:%d", server, port)
+		client, err = ldap.DialTLS("tcp", serverAddress, tlsCfg)
+		if err != nil {
+			log.Printf("Unable to connect to remote ldap server: %s", err)
+			return
+		}
+
+		clientChan <- client
+	}(clientChan)
+
+	select {
+	case client := <-clientChan:
+		return client, nil
+	case <-ctx.Done():
+		return client, errors.New("LDAP client went away while connecting to backend LDAP server")
 	}
 
-	serverAddress := fmt.Sprintf("%s:%d", server, port)
-	client, err = ldap.DialTLS("tcp", serverAddress, tlsCfg)
-	if err != nil {
-		return client, errors.New(fmt.Sprintf("Unable to connect to remote ldap server: %s", err))
-	}
-
-	return client, err
 }
 
 // returns tls config with RootCA certs loaded
-func clientTlsConfig(cert string, serverName string) (*tls.Config, error) {
+func clientTLSConfig(cert string, serverName string) (*tls.Config, error) {
 
 	clientCAPool := x509.NewCertPool()
 

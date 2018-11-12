@@ -70,7 +70,7 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 	//sess.context = servercontext.SetDn(sess.context, fmt.Sprintf("%s", req.Filter))
 	username := extractUsername(fmt.Sprintf("%s", req.Filter))
 
-	ldapClient, err := ConnectRemoteServer(s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
+	ldapClient, err := ConnectRemoteServer(ctx, s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
 	if err != nil {
 		s.Logger.Warn(err)
 		return []*ldap.SearchResult{&searchResults}, err

@@ -32,7 +32,7 @@ type Generic struct {
 
 func (g *Generic) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
 
-	ldapClient, err := ConnectRemoteServer(g.Config.ClientCaCert, g.Config.RemoteServerName, g.Config.RemoteServerPortTLS)
+	ldapClient, err := ConnectRemoteServer(ctx, g.Config.ClientCaCert, g.Config.RemoteServerName, g.Config.RemoteServerPortTLS)
 	if err != nil {
 		g.Logger.Warn(err)
 		return false
