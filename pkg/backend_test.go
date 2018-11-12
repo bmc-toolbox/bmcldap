@@ -4,7 +4,10 @@ import (
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 	. "github.com/smartystreets/goconvey/convey"
+
 	"testing"
+
+	. "github.com/bmc-toolbox/bmcldap/pkg/config"
 )
 
 type invalidSession struct{}
@@ -50,14 +53,28 @@ func TestBmcLdap_Connect(t *testing.T) {
 	})
 }
 
-//Test Bind
-func TestBmcLdap_Bind(t *testing.T) {
+//Test Bind invalid bind DN
+func TestBmcLdap_BindEmptyDN(t *testing.T) {
+	config, logger := setup()
+	Convey("Given a ldap server", t, func() {
+		server := NewLdapServer(logger, config)
+		Convey("When there is a bind request with an empty bindDN,", func() {
+			_, err := server.Bind(&invalidSession{}, &ldap.BindRequest{DN: ""})
+			Convey("An error should be returned", func() {
+				So(err, ShouldEqual, errInvalidBindDN)
+			})
+		})
+	})
+}
+
+//Test Bind invalid session
+func TestBmcLdap_BindInvalidSession(t *testing.T) {
 
 	config, logger := setup()
 	Convey("Given a ldap server", t, func() {
 		server := NewLdapServer(logger, config)
 		Convey("When there is a bind request with a invalid session,", func() {
-			id, err := server.Bind(&invalidSession{}, &ldap.BindRequest{DN: ""})
+			id, err := server.Bind(&invalidSession{}, &ldap.BindRequest{DN: "Foobar"})
 			Convey("An error should be returned", func() {
 				So(err, ShouldEqual, errInvalidSessionType)
 				So(id, ShouldBeNil)

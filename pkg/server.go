@@ -27,6 +27,7 @@ import (
 
 var (
 	errInvalidSessionType = errors.New("Invalid sessions type.")
+	errInvalidBindDN      = errors.New("Invalid BIND DN.")
 )
 
 type BmcLdap struct {

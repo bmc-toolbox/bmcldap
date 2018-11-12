@@ -43,6 +43,11 @@ type session struct {
 func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindResponse *ldap.BindResponse, err error) {
 
 	log := bmcLdap.logger
+
+	if req.DN == "" {
+		return nil, errInvalidBindDN
+	}
+
 	sess, ok := ctx.(*session)
 	if !ok {
 		return nil, errInvalidSessionType
