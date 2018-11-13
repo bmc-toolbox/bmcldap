@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project goes here.
 
-## [v0.0.2] - 13-11-2018
+## [v0.0.3] - 13-11-2018
 ### Changed
 - Switch to Go 1.11
 
