@@ -76,6 +76,10 @@ Configuration -> Ldap
  Search Base: "cn=supermicro,cn=bmcUsers"
 ```
 
+Build
+-----
+`GO111MODULE=on go build -mod vendor -v`
+
 Run
 ---
 
@@ -85,6 +89,14 @@ Run
 #enable debug output
 ./bmcldap serve -d -c /etc/bmcldap/bmcldap.yml
 ```
+
+Debugging
+---------
+
+pprof http endpoint runs on localhost:6060
+
+sending a `SIGUSR1` to the process PID will dump memstats and number of goroutines.
+
 Acknowledgement
 ---------------
 bmcldap was originally developed for [Booking.com](http://www.booking.com).
