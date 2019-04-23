@@ -42,10 +42,12 @@ package dell
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	. "github.com/bmc-toolbox/bmcldap/pkg/config"
 	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
 
+	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
@@ -62,7 +64,7 @@ func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []b
 func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
 
 	searchResults := ldap.SearchResult{}
-	req.BaseDN = d.Config.BaseDN
+	username := servercontext.GetDn(ctx)
 
 	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	if err != nil {
@@ -73,16 +75,48 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 
 	defer ldapClient.Close()
 
-	d.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", req))
-	sr, err := ldapClient.Search(req)
-	if err != nil {
-		d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
-		return sr, err
-	}
+	//look up the group base DN in our map of authorized DNs
+	for group, groupBaseDN := range d.Config.AuthorizedDNs {
+		var lookupDN string
 
-	if len(sr) > 0 {
-		d.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %+v", sr[0]))
-		return sr, nil
+		if strings.Contains(strings.ToLower(req.BaseDN), group) {
+			lookupDN = groupBaseDN
+		} else {
+			continue
+		}
+
+		filter := &ldap.EqualityMatch{
+			Attribute: "memberUid",
+			Value:     []byte(username),
+		}
+
+		searchRequest := ldap.SearchRequest{
+			BaseDN:       lookupDN,
+			Scope:        ldap.ScopeWholeSubtree,
+			DerefAliases: ldap.DerefAlways,
+			SizeLimit:    0,
+			TimeLimit:    0,
+			TypesOnly:    false,
+			Filter:       filter,
+			Attributes:   req.Attributes,
+		}
+
+		d.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
+		sr, err := ldapClient.Search(&searchRequest)
+		if err != nil {
+			d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+			continue
+		}
+
+		if len(sr) > 0 {
+			d.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
+			d.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
+			sr[0].DN = req.BaseDN
+			return sr, nil
+		}
+
+		d.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
+
 	}
 
 	return []*ldap.SearchResult{&searchResults}, nil
