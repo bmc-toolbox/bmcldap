@@ -47,7 +47,6 @@ import (
 	. "github.com/bmc-toolbox/bmcldap/pkg/config"
 	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
 
-	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
@@ -61,10 +60,36 @@ func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []b
 	return true
 }
 
+func extractUsername(s string) (string, error) {
+
+	if !strings.Contains(s, "uid=") {
+		return "", fmt.Errorf("Unexpected string")
+	}
+
+	// split uid= into tokens
+	var parts = strings.Split(s, "uid=")
+
+	if len(parts) < 2 {
+		return "", fmt.Errorf("Malformed DN string")
+	}
+
+	// split out username component from the rest
+	var usernameParts = strings.Split(parts[1], ")")
+	if len(usernameParts) == 0 {
+		return "", fmt.Errorf("no username in string")
+	} else {
+		if usernameParts[0] == "" {
+			return "", fmt.Errorf("Empty username in string")
+		}
+	}
+
+	return usernameParts[0], nil
+}
+
 func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
 
 	searchResults := ldap.SearchResult{}
-	username := servercontext.GetDn(ctx)
+	req.BaseDN = d.Config.BaseDN
 
 	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	if err != nil {
@@ -75,15 +100,17 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 
 	defer ldapClient.Close()
 
-	//look up the group base DN in our map of authorized DNs
-	for group, groupBaseDN := range d.Config.AuthorizedDNs {
+	username, err := extractUsername(fmt.Sprintf("%s", req.Filter))
+	if err != nil {
+		d.Logger.Warn(fmt.Sprintf("Malformed uid= filter: %s", err))
+		return []*ldap.SearchResult{&searchResults}, err
+	}
+
+	for _, groupBaseDN := range d.Config.AuthorizedDNs {
+
 		var lookupDN string
 
-		if strings.Contains(strings.ToLower(req.BaseDN), group) {
-			lookupDN = groupBaseDN
-		} else {
-			continue
-		}
+		lookupDN = groupBaseDN
 
 		filter := &ldap.EqualityMatch{
 			Attribute: "memberUid",
@@ -105,18 +132,15 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		sr, err := ldapClient.Search(&searchRequest)
 		if err != nil {
 			d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
-			continue
+			return sr, err
 		}
 
 		if len(sr) > 0 {
-			d.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
-			d.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
-			sr[0].DN = req.BaseDN
+			sr[0].DN = fmt.Sprintf("uid=%s,%s", username, d.Config.BaseDN)
 			return sr, nil
 		}
 
 		d.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
-
 	}
 
 	return []*ldap.SearchResult{&searchResults}, nil
