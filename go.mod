@@ -17,8 +17,11 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
 	github.com/spf13/pflag v0.0.0-20180208215315-6a877ebacf28
 	github.com/spf13/viper v0.0.0-20171227194143-aafc9e6bc7b7
+	github.com/stretchr/testify v1.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20171124090802-b080dc9a8c48
 	golang.org/x/sys v0.0.0-20180202135801-37707fdb30a5
 	golang.org/x/text v0.0.0-20180208041248-4e4a3210bb54
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/yaml.v2 v2.0.0
 )

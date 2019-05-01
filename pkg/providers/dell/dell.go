@@ -17,11 +17,12 @@ package dell
 //Dell BMC LDAP auth steps
 //1. BMC attempts to Bind with the defined Bind DN - Bind DN is set to "dell" to identify the vendor.
 //    - bmcldap just returns success for this step.
-//2. BMC Searches the BASE DN for the login username
-//    - Base DN needs to be set to "cn=dell" - to identify the vendor.
-//    - bmcldap rewrites the BASE DN in the search request to the one defined, in bmcldap configuration parameter - BaseDN.
-//      the search request is then passed to the remote ldap server and the reply passed back to the BMC
-//3. BMC Binds with username, password credentials. - uid=username,ou=People,dc=example,dc=com
+//2. BMC performs a search with the username, bmcldap returns a DN that the BMC will use to Bind
+//
+//3. BMC binds with the returned DN in the above search result
+//
+//4. BMC does a search for each ldap role group configured,
+//   bmcldap in turn, "fixes" up the DN and looks up the username in the ldap server.
 
 //Configuration
 //iDrac Settings -> User Authentication
@@ -38,7 +39,7 @@ package dell
 //Role Group Privileges, create groups,
 // Group DN: "cn=dell,cn=bmcAdmins"
 // Group DN: "cn=dell,cn=bmcUsers"
-
+//
 import (
 	"context"
 	"fmt"
@@ -62,34 +63,39 @@ func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []b
 
 func extractUsername(s string) (string, error) {
 
-	if !strings.Contains(s, "uid=") {
-		return "", fmt.Errorf("Unexpected string")
+	var parts []string
+
+	if strings.Contains(s, "objectClass") {
+		// split out username component from the filter request
+		// sample string: (&(uid=johndoe)(objectClass=posixAccount))
+
+		parts = strings.Split(s, "uid=")
+		if len(parts) < 2 {
+			return "", fmt.Errorf("Unexpected string")
+		}
+
+		parts = strings.Split(parts[1], ")")
+	} else {
+		//(memberUid=uid\3djohndoe,ou\3dPeople,dc\3dexample,dc\3dcom)
+		parts = strings.Split(s, ",")
+		parts = strings.Split(parts[0], "(memberUid=uid\\3d")
+		parts[0] = parts[1]
 	}
 
-	// split uid= into tokens
-	var parts = strings.Split(s, "uid=")
-
-	if len(parts) < 2 {
-		return "", fmt.Errorf("Malformed DN string")
-	}
-
-	// split out username component from the rest
-	var usernameParts = strings.Split(parts[1], ")")
-	if len(usernameParts) == 0 {
+	if len(parts) == 0 {
 		return "", fmt.Errorf("no username in string")
 	} else {
-		if usernameParts[0] == "" {
+		if parts[0] == "" {
 			return "", fmt.Errorf("Empty username in string")
 		}
 	}
 
-	return usernameParts[0], nil
+	return parts[0], nil
 }
 
 func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
 
-	searchResults := ldap.SearchResult{}
-	req.BaseDN = d.Config.BaseDN
+	var searchResults = ldap.SearchResult{}
 
 	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	if err != nil {
@@ -100,17 +106,42 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 
 	defer ldapClient.Close()
 
-	username, err := extractUsername(fmt.Sprintf("%s", req.Filter))
-	if err != nil {
-		d.Logger.Warn(fmt.Sprintf("Malformed uid= filter: %s", err))
-		return []*ldap.SearchResult{&searchResults}, err
+	// 1. first search request - bmcldap responds with the user BaseDN the BMC should use to Bind.
+	// The first search request after the bind with the cn=dell BaseDN,
+	// we need to return the bindDN with the username thats part of the request filter,
+	// this will cause the BMC to use the DN in the search result to bind with the returned user baseDN.
+	if req.BaseDN == "cn=dell" {
+
+		username, err := extractUsername(fmt.Sprintf("%s", req.Filter))
+		if err != nil {
+			d.Logger.Warn("Unable to extract username from filter.")
+			return []*ldap.SearchResult{}, err
+		}
+
+		var r = ldap.SearchResult{DN: fmt.Sprintf("uid=%s,%s", username, d.Config.BaseDN),
+			Attributes: make(map[string][][]byte)}
+
+		return []*ldap.SearchResult{&r}, nil
 	}
 
-	for _, groupBaseDN := range d.Config.AuthorizedDNs {
+	//2. BMC binds with the DN returned in the search result. (handled by the Bind() interface method)
+
+	//3. The subsequent search request we iterate over the configured LDAP role groups,
+	// if the username is a member of either of those groups return true
+	//look up the group base DN in our map of authorized DNs
+	for group, groupBaseDN := range d.Config.AuthorizedDNs {
 
 		var lookupDN string
+		if strings.Contains(strings.ToLower(req.BaseDN), group) {
+			lookupDN = groupBaseDN
+		} else {
+			continue
+		}
 
-		lookupDN = groupBaseDN
+		username, err := extractUsername(fmt.Sprintf("%s", req.Filter))
+		if err != nil {
+			d.Logger.Warn(fmt.Printf("Unable to extract username from filter: %s", err))
+		}
 
 		filter := &ldap.EqualityMatch{
 			Attribute: "memberUid",
@@ -143,5 +174,5 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		d.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
 	}
 
-	return []*ldap.SearchResult{&searchResults}, nil
+	return []*ldap.SearchResult{&searchResults}, fmt.Errorf("User not found in required ldap group(s).")
 }
