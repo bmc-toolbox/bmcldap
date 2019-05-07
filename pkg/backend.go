@@ -195,17 +195,28 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 		}, err
 	}
 
-	res = &ldap.SearchResponse{
-		BaseResponse: ldap.BaseResponse{
-			Code:      ldap.ResultSuccess,
-			MatchedDN: searchResults[0].DN,
-		},
-		Results: []*ldap.SearchResult{
-			&ldap.SearchResult{
-				DN:         searchResults[0].DN,
-				Attributes: searchResults[0].Attributes,
+	if len(searchResults) > 0 {
+		res = &ldap.SearchResponse{
+			BaseResponse: ldap.BaseResponse{
+				Code:      ldap.ResultSuccess,
+				MatchedDN: searchResults[0].DN,
 			},
-		},
+			Results: []*ldap.SearchResult{
+				&ldap.SearchResult{
+					DN:         searchResults[0].DN,
+					Attributes: searchResults[0].Attributes,
+				},
+			},
+		}
+
+	} else {
+		res = &ldap.SearchResponse{
+			BaseResponse: ldap.BaseResponse{
+				Code:      ldap.ResultNoSuchObject,
+				MatchedDN: "",
+			},
+			Results: []*ldap.SearchResult{},
+		}
 	}
 
 	return res, err
