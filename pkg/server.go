@@ -76,5 +76,6 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *Config) *tls.Config {
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS11,
 	}
 }
