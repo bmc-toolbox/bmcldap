@@ -25,7 +25,7 @@ import (
 	"github.com/bmc-toolbox/bmcldap/pkg/providers/generic"
 	"github.com/bmc-toolbox/bmcldap/pkg/providers/hp"
 	"github.com/bmc-toolbox/bmcldap/pkg/providers/supermicro"
-	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
+	"github.com/bmc-toolbox/bmcldap/pkg/servercontext"
 
 	"github.com/samuel/go-ldap/ldap"
 )

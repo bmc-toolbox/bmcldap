@@ -33,7 +33,7 @@ func main() {
 }
 
 // setup pprof
-// log mem, goroutine stats when SIGUSR1 is recieved
+// log mem, goroutine stats when SIGUSR1 is received
 func setupProfiling() {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))

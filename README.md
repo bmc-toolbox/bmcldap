@@ -1,4 +1,4 @@
-bmcldap
+bmcldap [![Go Report Card](https://goreportcard.com/badge/github.com/bmc-toolbox/bmcldap)](https://goreportcard.com/report/github.com/bmc-toolbox/bmcldap)
 =======
 
 What?
