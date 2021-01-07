@@ -1,4 +1,4 @@
-// Copyright 2017 Frank Schroeder. All rights reserved.
+// Copyright 2018 Frank Schroeder. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,16 +8,20 @@ package properties
 // BUG(frank): Write() does not allow to configure the newline character. Therefore, on Windows LF is used.
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
+
+const maxExpansionDepth = 64
 
 // ErrorHandlerFunc defines the type of function which handles failures
 // of the MustXXX() functions. An error handler function must exit
@@ -67,6 +71,9 @@ type Properties struct {
 
 	// Stores the keys in order of appearance.
 	k []string
+
+	// WriteSeparator specifies the separator of key and value while writing the properties.
+	WriteSeparator string
 }
 
 // NewProperties creates a new Properties struct with the default
@@ -79,6 +86,17 @@ func NewProperties() *Properties {
 		c:       map[string][]string{},
 		k:       []string{},
 	}
+}
+
+// Load reads a buffer into the given Properties struct.
+func (p *Properties) Load(buf []byte, enc Encoding) error {
+	l := &Loader{Encoding: enc, DisableExpansion: p.DisableExpansion}
+	newProperties, err := l.LoadBytes(buf)
+	if err != nil {
+		return err
+	}
+	p.Merge(newProperties)
+	return nil
 }
 
 // Get returns the expanded value for the given key if exists.
@@ -98,7 +116,7 @@ func (p *Properties) Get(key string) (value string, ok bool) {
 	// circular references and malformed expressions
 	// so we panic if we still get an error here.
 	if err != nil {
-		ErrorHandler(fmt.Errorf("%s in %q", err, key+" = "+v))
+		ErrorHandler(err)
 	}
 
 	return expanded, true
@@ -573,6 +591,12 @@ func (p *Properties) String() string {
 	return s
 }
 
+// Sort sorts the properties keys in alphabetical order.
+// This is helpfully before writing the properties.
+func (p *Properties) Sort() {
+	sort.Strings(p.k)
+}
+
 // Write writes all unexpanded 'key = value' pairs to the given writer.
 // Write returns the number of bytes written and any write error encountered.
 func (p *Properties) Write(w io.Writer, enc Encoding) (n int, err error) {
@@ -622,8 +646,11 @@ func (p *Properties) WriteComment(w io.Writer, prefix string, enc Encoding) (n i
 				}
 			}
 		}
-
-		x, err = fmt.Fprintf(w, "%s = %s\n", encode(key, " :", enc), encode(value, "", enc))
+		sep := " = "
+		if p.WriteSeparator != "" {
+			sep = p.WriteSeparator
+		}
+		x, err = fmt.Fprintf(w, "%s%s%s\n", encode(key, " :", enc), sep, encode(value, "", enc))
 		if err != nil {
 			return
 		}
@@ -710,42 +737,56 @@ func (p *Properties) expand(key, input string) (string, error) {
 		return input, nil
 	}
 
-	return expand(key, input, make(map[string]bool), p.Prefix, p.Postfix, p.m)
+	return expand(input, []string{key}, p.Prefix, p.Postfix, p.m)
 }
 
 // expand recursively expands expressions of '(prefix)key(postfix)' to their corresponding values.
 // The function keeps track of the keys that were already expanded and stops if it
 // detects a circular reference or a malformed expression of the form '(prefix)key'.
-func expand(originkey, s string, keys map[string]bool, prefix, postfix string, values map[string]string) (string, error) {
-	start := strings.Index(s, prefix)
-	if start == -1 {
-		return s, nil
+func expand(s string, keys []string, prefix, postfix string, values map[string]string) (string, error) {
+	if len(keys) > maxExpansionDepth {
+		return "", fmt.Errorf("expansion too deep")
 	}
 
-	keyStart := start + len(prefix)
-	keyLen := strings.Index(s[keyStart:], postfix)
-	if keyLen == -1 {
-		return "", fmt.Errorf("malformed expression")
+	for {
+		start := strings.Index(s, prefix)
+		if start == -1 {
+			return s, nil
+		}
+
+		keyStart := start + len(prefix)
+		keyLen := strings.Index(s[keyStart:], postfix)
+		if keyLen == -1 {
+			return "", fmt.Errorf("malformed expression")
+		}
+
+		end := keyStart + keyLen + len(postfix) - 1
+		key := s[keyStart : keyStart+keyLen]
+
+		// fmt.Printf("s:%q pp:%q start:%d end:%d keyStart:%d keyLen:%d key:%q\n", s, prefix + "..." + postfix, start, end, keyStart, keyLen, key)
+
+		for _, k := range keys {
+			if key == k {
+				var b bytes.Buffer
+				b.WriteString("circular reference in:\n")
+				for _, k1 := range keys {
+					fmt.Fprintf(&b, "%s=%s\n", k1, values[k1])
+				}
+				return "", fmt.Errorf(b.String())
+			}
+		}
+
+		val, ok := values[key]
+		if !ok {
+			val = os.Getenv(key)
+		}
+		new_val, err := expand(val, append(keys, key), prefix, postfix, values)
+		if err != nil {
+			return "", err
+		}
+		s = s[:start] + new_val + s[end+1:]
 	}
-
-	end := keyStart + keyLen + len(postfix) - 1
-	key := s[keyStart : keyStart+keyLen]
-
-	// fmt.Printf("s:%q pp:%q start:%d end:%d keyStart:%d keyLen:%d key:%q\n", s, prefix + "..." + postfix, start, end, keyStart, keyLen, key)
-
-	if _, ok := keys[originkey]; ok {
-		return "", fmt.Errorf("circular reference")
-	}
-
-	val, ok := values[key]
-	if !ok {
-		val = os.Getenv(key)
-	}
-
-	// remember that we've seen the key
-	keys[originkey] = true
-
-	return expand(key, s[:start]+val+s[end+1:], keys, prefix, postfix, values)
+	return s, nil
 }
 
 // encode encodes a UTF-8 string to ISO-8859-1 and escapes some characters.
@@ -798,6 +839,8 @@ func escape(r rune, special string) string {
 		return "\\r"
 	case '\t':
 		return "\\t"
+	case '\\':
+		return "\\\\"
 	default:
 		if strings.ContainsRune(special, r) {
 			return "\\" + string(r)

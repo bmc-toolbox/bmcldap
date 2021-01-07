@@ -1,27 +1,35 @@
 module github.com/bmc-toolbox/bmcldap
 
+go 1.15
+
 require (
-	github.com/fsnotify/fsnotify v1.4.7
-	github.com/hashicorp/hcl v0.0.0-20171017181929-23c074d0eceb
-	github.com/jtolds/gls v4.2.1+incompatible
-	github.com/magiconair/properties v0.0.0-20180213212811-50a685e9bc1f
-	github.com/mitchellh/mapstructure v0.0.0-20180203102830-a4e142e9c047
-	github.com/pelletier/go-toml v1.1.0
+	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
+	github.com/magiconair/properties v1.8.4 // indirect
+	github.com/mitchellh/mapstructure v1.4.0 // indirect
+	github.com/neelance/astrewrite v0.0.0-20160511093645-99348263ae86 // indirect
+	github.com/neelance/sourcemap v0.0.0-20200213170602-2833bce08e4c // indirect
+	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/samuel/go-ldap v0.0.0-20150819063227-09b1a56d2755
-	github.com/sirupsen/logrus v0.0.0-20180329225952-778f2e774c72
-	github.com/smartystreets/assertions v0.0.0-20170925172151-0b37b35ec743
-	github.com/smartystreets/goconvey v0.0.0-20170825221426-e5b2b7c91115
-	github.com/spf13/afero v0.0.0-20180211162714-bbf41cb36dff
-	github.com/spf13/cast v1.1.0
-	github.com/spf13/cobra v0.0.0-20180211162230-be77323fc051
-	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
-	github.com/spf13/pflag v0.0.0-20180208215315-6a877ebacf28
-	github.com/spf13/viper v0.0.0-20171227194143-aafc9e6bc7b7
-	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20171124090802-b080dc9a8c48
-	golang.org/x/sys v0.0.0-20180202135801-37707fdb30a5
-	golang.org/x/text v0.0.0-20180208041248-4e4a3210bb54
+	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
+	github.com/sirupsen/logrus v1.7.0
+	github.com/smartystreets/goconvey v1.6.4
+	github.com/spf13/afero v1.5.1 // indirect
+	github.com/spf13/cast v1.3.1 // indirect
+	github.com/spf13/cobra v1.1.1
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.7.1
+	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/ugorji/go v1.1.4 // indirect
+	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
+	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect
+	golang.org/x/text v0.3.4 // indirect
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
-	gopkg.in/yaml.v2 v2.0.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

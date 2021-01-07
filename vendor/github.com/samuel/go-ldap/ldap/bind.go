@@ -16,10 +16,10 @@ func parseBindRequest(pkt *Packet) (*BindRequest, error) {
 	if len(pkt.Items) != 3 {
 		return nil, ErrProtocolError("bind request should have 3 values")
 	}
-	_, ok := pkt.Items[0].Int()
-	//if !ok || ver != protocolVersion {
-	//	return nil, ErrProtocolError("unsupported or invalid version")
-	//}
+	ver, ok := pkt.Items[0].Int()
+	if !ok || ver != protocolVersion {
+		return nil, ErrProtocolError("unsupported or invalid version")
+	}
 	req := &BindRequest{}
 	if req.DN, ok = pkt.Items[1].Str(); !ok {
 		return nil, ErrProtocolError("can't parse dn for bind request")
