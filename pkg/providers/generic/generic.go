@@ -33,12 +33,12 @@ type Generic struct {
 func (g *Generic) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
 
 	ldapClient, err := ConnectRemoteServer(ctx, g.Config.ClientCaCert, g.Config.RemoteServerName, g.Config.RemoteServerPortTLS)
+	defer ldapClient.Close()
+
 	if err != nil {
 		g.Logger.Warn(err)
 		return false
 	}
-
-	defer ldapClient.Close()
 
 	g.Logger.Debug(fmt.Sprintf("Attempting bind with remote ldap server for %s", bindDN))
 

@@ -63,12 +63,12 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 	searchResults := ldap.SearchResult{}
 
 	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
+	defer ldapClient.Close()
+
 	if err != nil {
 		d.Logger.Warn(err)
 		return []*ldap.SearchResult{&searchResults}, err
 	}
-
-	defer ldapClient.Close()
 
 	// Dell Search request 1
 	// BMC validating the user account is present under the base DN

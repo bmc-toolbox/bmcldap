@@ -71,12 +71,12 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 	username := extractUsername(fmt.Sprintf("%s", req.Filter))
 
 	ldapClient, err := ConnectRemoteServer(ctx, s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
+	defer ldapClient.Close()
+
 	if err != nil {
 		s.Logger.Warn(err)
 		return []*ldap.SearchResult{&searchResults}, err
 	}
-
-	defer ldapClient.Close()
 
 	//look up the group base DN in our map of authorized DNs
 	for group, groupBaseDN := range s.Config.AuthorizedDNs {

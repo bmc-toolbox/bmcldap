@@ -51,6 +51,7 @@ func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string
 
 	select {
 	case client := <-clientChan:
+		close(clientChan)
 		return client, nil
 	case <-ctx.Done():
 		return client, errors.New("LDAP client went away while connecting to backend LDAP server")

@@ -62,12 +62,12 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 	username := servercontext.GetDn(ctx)
 
 	ldapClient, err := ConnectRemoteServer(ctx, h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
+	defer ldapClient.Close()
+
 	if err != nil {
 		h.Logger.Warn(err)
 		return []*ldap.SearchResult{&searchResults}, err
 	}
-
-	defer ldapClient.Close()
 
 	//look up the group base DN in our map of authorized DNs
 	for group, groupBaseDN := range h.Config.AuthorizedDNs {
