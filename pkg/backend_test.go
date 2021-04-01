@@ -20,6 +20,7 @@ func setup() (*Config, *logrus.Logger) {
 		RemoteServerName:    "ldaps.example.com",
 		RemoteServerPortTLS: 636,
 		Debug:               true,
+		MinTLSVersion:       "1.2",
 		PortTLS:             443,
 		PortInsecure:        386,
 		Cert:                "/etc/bmcldap/server.pem",

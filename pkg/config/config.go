@@ -21,6 +21,7 @@ type Config struct {
 	BaseDN              string
 	AuthorizedDNs       map[string]string //the ldap groups we want to authorize
 	Config              string
+	MinTLSVersion       string
 	RemoteServerName    string
 	RemoteServerPortTLS int
 	CaCert              string

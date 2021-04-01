@@ -73,9 +73,23 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *Config) *tls.Config {
 		os.Exit(1)
 	}
 
+	minVersion := tls.VersionTLS11
+	if c.MinTLSVersion == "1.0" {
+		minVersion = tls.VersionTLS10
+	} else if c.MinTLSVersion == "1.2" {
+		minVersion = tls.VersionTLS12
+	} else if c.MinTLSVersion == "1.3" {
+		minVersion = tls.VersionTLS13
+	} else if c.MinTLSVersion != "1.1" && c.MinTLSVersion != "" {
+		bmcLdap.logger.WithFields(logrus.Fields{
+			"component": "LoadTlsConfig",
+			"TLSVersion": c.MinTLSVersion,
+		}).Warning("Using TLS 1.1, ignoring unsupported version " + c.MinTLSVersion)
+	}
+
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS11,
+		MinVersion:         uint16(minVersion),
 	}
 }

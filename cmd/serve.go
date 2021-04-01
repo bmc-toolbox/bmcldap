@@ -38,16 +38,14 @@ func init() {
 }
 
 func serve() {
-
-	debug = viper.GetBool("Debug")
-
 	//TODO: add config validator
 	config := Config{
 		BaseDN:              viper.GetString("BaseDN"),
 		ClientCaCert:        viper.GetString("ClientCaCert"),
 		RemoteServerName:    viper.GetString("RemoteServerName"),
 		RemoteServerPortTLS: viper.GetInt("RemoteServerPortTLS"),
-		Debug:               debug,
+		Debug:               viper.GetBool("Debug"),
+		MinTLSVersion:       viper.GetString("MinTLSVersion"),
 		PortTLS:             viper.GetInt("PortTLS"),
 		PortInsecure:        viper.GetInt("PortInsecure"),
 		Cert:                viper.GetString("Cert"),
