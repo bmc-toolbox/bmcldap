@@ -16,12 +16,13 @@ package cmd
 
 import (
 	"fmt"
+	"log/syslog"
+	"os"
+
 	"github.com/sirupsen/logrus"
 	logrusSyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log/syslog"
-	"os"
 )
 
 var (
@@ -62,7 +63,7 @@ func setupLogger() {
 		logger.AddHook(hook)
 	}
 
-	if debug == true {
+	if debug {
 		logger.SetLevel(logrus.DebugLevel)
 	} else {
 		logger.SetLevel(logrus.InfoLevel)

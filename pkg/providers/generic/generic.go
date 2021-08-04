@@ -18,21 +18,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bmc-toolbox/bmcldap/pkg/config"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
-
-	. "github.com/bmc-toolbox/bmcldap/pkg/config"
-	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
 )
 
 type Generic struct {
 	Logger *logrus.Logger
-	Config *Config
+	Config *config.Config
 }
 
 func (g *Generic) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
 
-	ldapClient, err := ConnectRemoteServer(ctx, g.Config.ClientCaCert, g.Config.RemoteServerName, g.Config.RemoteServerPortTLS)
+	ldapClient, err := providers.ConnectRemoteServer(ctx, g.Config.ClientCaCert, g.Config.RemoteServerName, g.Config.RemoteServerPortTLS)
 	defer ldapClient.Close()
 
 	if err != nil {
