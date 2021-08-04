@@ -82,25 +82,29 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 			d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
 		}
 		return searchResponse, nil
-
 	}
 
 	// Dell Search request 2
 	// BMC validating the user account is a member of the ldap group
 	// pass this request to the backend ldap server and return the response to the client as is.
 	if strings.Contains(req.Filter.String(), "memberUid=") {
-
 		// req.BaseDN at this point would contain "cn=dell", to identify this BMC as dell.
 		// example "cn=dell,cn=fooUsers,ou=Group,dc=example,dc=com",
 		// we strip out "cn=dell," from the request Base DN
-		req.BaseDN = strings.Replace(req.BaseDN, "cn=dell,", "", 1)
 
-		searchResponse, err := ldapClient.Search(req)
-		if err != nil {
-			d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+		mainDN := strings.Replace(req.BaseDN, "cn=dell,", "", 1)
+
+		for _, prefix := range d.Config.Prefixes {
+			req.BaseDN = strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
+			searchResponse, err := ldapClient.Search(req)
+			if err != nil {
+				d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+			}
+
+			if len(searchResponse) > 0 {
+				return searchResponse, nil
+			}
 		}
-
-		return searchResponse, nil
 	}
 
 	return []*ldap.SearchResult{&searchResults}, nil

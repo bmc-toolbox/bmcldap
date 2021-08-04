@@ -59,15 +59,9 @@ func extractUsername(filter string) string {
 }
 
 func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-	//sess, ok := ctx.(*servercontext.Session)
-	//if !ok {
-	//	return nil, errors.New("Invalid sessions type.")
-	//}
-
 	searchResults := ldap.SearchResult{}
-	//In its first Search request, the supermicro does a search with the login username
-	//as its search filter, here we extract the username from that request.
-	//sess.context = servercontext.SetDn(sess.context, fmt.Sprintf("%s", req.Filter))
+	// In its first search request, SuperMicro does a search with the login username
+	//   as its search filter. We extract the username from that request.
 	username := extractUsername(req.Filter.String())
 
 	ldapClient, err := providers.ConnectRemoteServer(ctx, s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
@@ -78,51 +72,45 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 		return []*ldap.SearchResult{&searchResults}, err
 	}
 
-	//look up the group base DN in our map of authorized DNs
-	for group, groupBaseDN := range s.Config.AuthorizedDNs {
-		var lookupDN string
+	// Unfortunately, SuperMicro doesn't have the flexibility of searching the user's membership
+	//   in multiple groups. That's why we have to "hard-code" those in our configuration.
+	for _, groupBaseDN := range s.Config.SuperMicroAuthorizedDNs {
+		for _, prefix := range s.Config.Prefixes {
+			lookupDN := prefix + groupBaseDN
+			filter := &ldap.EqualityMatch{
+				Attribute: "memberUid",
+				Value:     []byte(username),
+			}
 
-		if strings.Contains(strings.ToLower(req.BaseDN), group) {
-			lookupDN = groupBaseDN
-		} else {
-			continue
+			searchRequest := ldap.SearchRequest{
+				BaseDN:       lookupDN,
+				Scope:        ldap.ScopeWholeSubtree,
+				DerefAliases: ldap.DerefAlways,
+				SizeLimit:    0,
+				TimeLimit:    0,
+				TypesOnly:    false,
+				Filter:       filter,
+				Attributes:   req.Attributes,
+			}
+
+			s.Logger.Debug(fmt.Sprintf("Querying remote LDAP with SuperMicro search request: %+v", searchRequest))
+			sr, err := ldapClient.Search(&searchRequest)
+			if err != nil {
+				s.Logger.Warn(fmt.Sprintf("Remote LDAP SuperMicro search request for DN %s returned an error: %s", lookupDN, err))
+				continue
+			}
+
+			if len(sr) > 0 {
+				s.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
+				s.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
+				sr[0].DN = username
+				// SuperMicro expects these special attributes:
+				sr[0].Attributes["permission"] = [][]byte{[]byte("H=4")}
+				return sr, nil
+			}
 		}
-
-		filter := &ldap.EqualityMatch{
-			Attribute: "memberUid",
-			Value:     []byte(username),
-		}
-
-		searchRequest := ldap.SearchRequest{
-			BaseDN:       lookupDN,
-			Scope:        ldap.ScopeWholeSubtree,
-			DerefAliases: ldap.DerefAlways,
-			SizeLimit:    0,
-			TimeLimit:    0,
-			TypesOnly:    false,
-			Filter:       filter,
-			Attributes:   req.Attributes,
-		}
-
-		s.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
-		sr, err := ldapClient.Search(&searchRequest)
-		if err != nil {
-			s.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
-			continue
-		}
-
-		if len(sr) > 0 {
-			s.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
-			s.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
-			sr[0].DN = username
-			//yeah! supermicro expects these special attributes
-			sr[0].Attributes["permission"] = [][]byte{[]byte("H=4")}
-			return sr, nil
-		}
-
-		s.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
-
 	}
 
+	s.Logger.Info(fmt.Sprintf("User %s not found in all hard-coded groups!", username))
 	return []*ldap.SearchResult{&searchResults}, nil
 }
