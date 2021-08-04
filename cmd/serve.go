@@ -40,18 +40,35 @@ func init() {
 func serve() {
 	//TODO: add config validator
 	config := config.Config{
-		BaseDN:              viper.GetString("BaseDN"),
-		ClientCaCert:        viper.GetString("ClientCaCert"),
-		RemoteServerName:    viper.GetString("RemoteServerName"),
-		RemoteServerPortTLS: viper.GetInt("RemoteServerPortTLS"),
-		Debug:               viper.GetBool("Debug"),
-		MinTLSVersion:       viper.GetString("MinTLSVersion"),
-		PortTLS:             viper.GetInt("PortTLS"),
-		PortInsecure:        viper.GetInt("PortInsecure"),
-		Cert:                viper.GetString("Cert"),
-		Key:                 viper.GetString("Key"),
-		AuthorizedDNs:       viper.GetStringMapString("Groups"),
-		IgnoreFilters:       viper.GetStringSlice("IgnoreFilters"),
+		BaseDN:                  viper.GetString("BaseDN"),
+		ClientCaCert:            viper.GetString("ClientCaCert"),
+		RemoteServerName:        viper.GetString("RemoteServerName"),
+		RemoteServerPortTLS:     viper.GetInt("RemoteServerPortTLS"),
+		Debug:                   viper.GetBool("Debug"),
+		MinTLSVersion:           viper.GetString("MinTLSVersion"),
+		PortTLS:                 viper.GetInt("PortTLS"),
+		PortInsecure:            viper.GetInt("PortInsecure"),
+		Cert:                    viper.GetString("Cert"),
+		Key:                     viper.GetString("Key"),
+		Prefixes:                viper.GetStringSlice("Prefixes"),
+		SuperMicroAuthorizedDNs: viper.GetStringMapString("SuperMicroAuthorizedDNs"),
+		IgnoreFilters:           viper.GetStringSlice("IgnoreFilters"),
+	}
+
+	// To ease the abstraction, an empty prefix always exists.
+	if config.Prefixes == nil {
+		config.Prefixes = []string{""}
+	} else {
+		found := false
+		for _, prefix := range config.Prefixes {
+			if prefix == "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			config.Prefixes = append([]string{""}, config.Prefixes...)
+		}
 	}
 
 	server := pkg.NewLdapServer(logger, &config)

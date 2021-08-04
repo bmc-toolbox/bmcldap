@@ -25,7 +25,8 @@ func setup() (*Config, *logrus.Logger) {
 		PortInsecure:        386,
 		Cert:                "/etc/bmcldap/server.pem",
 		Key:                 "/etc/bmcldap/server-key.pem",
-		AuthorizedDNs: map[string]string{
+		Prefixes:            []string{"temp_", "firefighting_"},
+		SuperMicroAuthorizedDNs: map[string]string{
 			"bmcUsers":  "cn=bmcUsers,ou=Group,dc=example,dc=com",
 			"bmcAdmins": "cn=bmcAdmins,ou=Group,dc=example,dc=com",
 		},

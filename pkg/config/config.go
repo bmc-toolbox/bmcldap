@@ -19,7 +19,6 @@ type Config struct {
 	PortTLS             int
 	PortInsecure        int
 	BaseDN              string
-	AuthorizedDNs       map[string]string //the ldap groups we want to authorize
 	Config              string
 	MinTLSVersion       string
 	RemoteServerName    string
@@ -29,4 +28,10 @@ type Config struct {
 	Cert                string
 	Key                 string
 	IgnoreFilters       []string
+	// The LDAP groups we want to authorize for SuperMicro.
+	// It doesn't support multiple groups in the BMC.
+	SuperMicroAuthorizedDNs map[string]string
+	// Prefixes that might be useful, like temporary_fooUsers.
+	// This is sometimes used for firefighting (granting temporary access rights during emergencies).
+	Prefixes []string
 }

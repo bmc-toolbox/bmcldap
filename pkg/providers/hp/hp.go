@@ -78,38 +78,40 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 			continue
 		}
 
-		filter := &ldap.EqualityMatch{
-			Attribute: "memberUid",
-			Value:     []byte(username),
+		for _, prefix := range h.Config.Prefixes {
+			u := prefix + username
+			filter := &ldap.EqualityMatch{
+				Attribute: "memberUid",
+				Value:     []byte(u),
+			}
+
+			searchRequest := ldap.SearchRequest{
+				BaseDN:       lookupDN,
+				Scope:        ldap.ScopeWholeSubtree,
+				DerefAliases: ldap.DerefAlways,
+				SizeLimit:    0,
+				TimeLimit:    0,
+				TypesOnly:    false,
+				Filter:       filter,
+				Attributes:   req.Attributes,
+			}
+
+			h.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
+			sr, err := ldapClient.Search(&searchRequest)
+			if err != nil {
+				h.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+				continue
+			}
+
+			if len(sr) > 0 {
+				h.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
+				h.Logger.Info(fmt.Sprintf("User %s found in group %s", u, lookupDN))
+				sr[0].DN = req.BaseDN
+				return sr, nil
+			}
 		}
 
-		searchRequest := ldap.SearchRequest{
-			BaseDN:       lookupDN,
-			Scope:        ldap.ScopeWholeSubtree,
-			DerefAliases: ldap.DerefAlways,
-			SizeLimit:    0,
-			TimeLimit:    0,
-			TypesOnly:    false,
-			Filter:       filter,
-			Attributes:   req.Attributes,
-		}
-
-		h.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
-		sr, err := ldapClient.Search(&searchRequest)
-		if err != nil {
-			h.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
-			continue
-		}
-
-		if len(sr) > 0 {
-			h.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
-			h.Logger.Info(fmt.Sprintf("User %s found in group %s", username, lookupDN))
-			sr[0].DN = req.BaseDN
-			return sr, nil
-		}
-
-		h.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, lookupDN))
-
+		h.Logger.Info(fmt.Sprintf("(Prefixed?) user %s not found in group %s", username, lookupDN))
 	}
 
 	return []*ldap.SearchResult{&searchResults}, nil
