@@ -16,7 +16,6 @@ package pkg
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -86,7 +85,7 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 	//Since HP iLOs will attempt the first BIND with just the username,
 	//we look for strings that don't seem to be a DN
 	var bindDN string
-	if strings.Contains(bindUsername, "=") == false {
+	if !strings.Contains(bindUsername, "=") {
 		bindDN = fmt.Sprintf("uid=%s,%s", bindUsername, bmcLdap.config.BaseDN)
 	} else {
 		bindDN = bindUsername
@@ -153,7 +152,7 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 		}, nil
 	}
 
-	if bmcLdap.ignoreSearchReq(fmt.Sprintf("%s", req.Filter)) {
+	if bmcLdap.ignoreSearchReq(req.Filter.String()) {
 		return &ldap.SearchResponse{
 			BaseResponse: ldap.BaseResponse{
 				Code: ldap.ResultUnwillingToPerform,
@@ -183,7 +182,7 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 			BaseResponse: ldap.BaseResponse{
 				Code: ldap.ResultInsufficientAccessRights,
 			},
-		}, errors.New(fmt.Sprintf("Unrecognized vendor BaseDN: %s", req.BaseDN))
+		}, fmt.Errorf("unrecognized vendor BaseDN: %s", req.BaseDN)
 	}
 
 	searchResults, err := auth.Authorize(sess.context, req)
@@ -202,13 +201,12 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 				MatchedDN: searchResults[0].DN,
 			},
 			Results: []*ldap.SearchResult{
-				&ldap.SearchResult{
+				{
 					DN:         searchResults[0].DN,
 					Attributes: searchResults[0].Attributes,
 				},
 			},
 		}
-
 	} else {
 		res = &ldap.SearchResponse{
 			BaseResponse: ldap.BaseResponse{

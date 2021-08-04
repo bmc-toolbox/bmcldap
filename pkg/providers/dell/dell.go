@@ -41,20 +41,18 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/bmc-toolbox/bmcldap/pkg/config"
-	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
-
+	"github.com/bmc-toolbox/bmcldap/pkg/config"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
 
 type Dell struct {
 	Logger *logrus.Logger
-	Config *Config
+	Config *config.Config
 }
 
 func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
-
 	return true
 }
 
@@ -62,7 +60,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 
 	searchResults := ldap.SearchResult{}
 
-	ldapClient, err := ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
+	ldapClient, err := providers.ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	defer ldapClient.Close()
 
 	if err != nil {

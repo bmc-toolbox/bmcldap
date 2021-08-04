@@ -15,9 +15,9 @@ bmcldap sits in between the BMCs and the LDAP server, it looks at each request, 
 
 Supported BMCs
 --------------
-    HP - iLO4,5
+    HP - iLO4,iLO5
     Supermicro
-    Dell - iDrac8
+    Dell - iDRAC8,iDRAC9
 
 Configuration
 -------------
@@ -101,5 +101,5 @@ Acknowledgement
 ---------------
 bmcldap was originally developed for [Booking.com](http://www.booking.com).
 With approval from [Booking.com](http://www.booking.com), the code and
-specification were generalized and published as Open Source on github, for
+specification were generalized and published as Open Source on GitHub, for
 which the authors would like to express their gratitude.

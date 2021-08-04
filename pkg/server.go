@@ -20,26 +20,25 @@ import (
 	"errors"
 	"os"
 
-	. "github.com/bmc-toolbox/bmcldap/pkg/config"
+	"github.com/bmc-toolbox/bmcldap/pkg/config"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	errInvalidSessionType = errors.New("Invalid sessions type.")
-	errInvalidBindDN      = errors.New("Invalid BIND DN.")
+	errInvalidSessionType = errors.New("invalid sessions type")
+	errInvalidBindDN      = errors.New("invalid BIND DN")
 )
 
 type BmcLdap struct {
 	server  *ldap.Server
-	client  *ldap.Client //Client connection to the remote ldap server
 	logger  *logrus.Logger
-	config  *Config
+	config  *config.Config
 	context context.Context
 }
 
 // returns a ldap.Server
-func NewLdapServer(logger *logrus.Logger, config *Config) *BmcLdap {
+func NewLdapServer(logger *logrus.Logger, config *config.Config) *BmcLdap {
 	ldapBackend := &BmcLdap{context: context.Background(), logger: logger, config: config}
 	ldapBackend.server, _ = ldap.NewServer(ldapBackend, nil)
 	return ldapBackend
@@ -62,7 +61,7 @@ func (bmcLdap *BmcLdap) Ldap(protocol string, address string) {
 	bmcLdap.server.Serve(protocol, address)
 }
 
-func (bmcLdap *BmcLdap) LoadTlsConfig(c *Config) *tls.Config {
+func (bmcLdap *BmcLdap) LoadTlsConfig(c *config.Config) *tls.Config {
 	cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
 	if err != nil {
 		bmcLdap.logger.WithFields(logrus.Fields{

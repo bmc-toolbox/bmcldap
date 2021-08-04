@@ -38,17 +38,16 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/bmc-toolbox/bmcldap/pkg/config"
-	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
-
-	servercontext "github.com/bmc-toolbox/bmcldap/pkg/servercontext"
+	"github.com/bmc-toolbox/bmcldap/pkg/config"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers"
+	"github.com/bmc-toolbox/bmcldap/pkg/servercontext"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
 
 type Hp struct {
 	Logger *logrus.Logger
-	Config *Config
+	Config *config.Config
 }
 
 func (h *Hp) Authenticate(ctx context.Context, bindDN string, bindPassword []byte) bool {
@@ -61,7 +60,7 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 	searchResults := ldap.SearchResult{}
 	username := servercontext.GetDn(ctx)
 
-	ldapClient, err := ConnectRemoteServer(ctx, h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
+	ldapClient, err := providers.ConnectRemoteServer(ctx, h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
 	defer ldapClient.Close()
 
 	if err != nil {

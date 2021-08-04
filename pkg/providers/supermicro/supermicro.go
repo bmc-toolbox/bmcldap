@@ -36,15 +36,15 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/bmc-toolbox/bmcldap/pkg/config"
-	. "github.com/bmc-toolbox/bmcldap/pkg/providers"
+	"github.com/bmc-toolbox/bmcldap/pkg/config"
+	"github.com/bmc-toolbox/bmcldap/pkg/providers"
 	"github.com/samuel/go-ldap/ldap"
 	"github.com/sirupsen/logrus"
 )
 
 type Supermicro struct {
 	Logger *logrus.Logger
-	Config *Config
+	Config *config.Config
 }
 
 //When configuring the supermicro, use the 'supermicro' username
@@ -68,9 +68,9 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 	//In its first Search request, the supermicro does a search with the login username
 	//as its search filter, here we extract the username from that request.
 	//sess.context = servercontext.SetDn(sess.context, fmt.Sprintf("%s", req.Filter))
-	username := extractUsername(fmt.Sprintf("%s", req.Filter))
+	username := extractUsername(req.Filter.String())
 
-	ldapClient, err := ConnectRemoteServer(ctx, s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
+	ldapClient, err := providers.ConnectRemoteServer(ctx, s.Config.ClientCaCert, s.Config.RemoteServerName, s.Config.RemoteServerPortTLS)
 	defer ldapClient.Close()
 
 	if err != nil {
@@ -124,6 +124,5 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 
 	}
 
-	fmt.Println(username)
 	return []*ldap.SearchResult{&searchResults}, nil
 }
