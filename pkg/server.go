@@ -81,7 +81,7 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *config.Config) *tls.Config {
 		minVersion = tls.VersionTLS13
 	} else if c.MinTLSVersion != "1.1" && c.MinTLSVersion != "" {
 		bmcLdap.logger.WithFields(logrus.Fields{
-			"component": "LoadTlsConfig",
+			"component":  "LoadTlsConfig",
 			"TLSVersion": c.MinTLSVersion,
 		}).Warning("Using TLS 1.1, ignoring unsupported version " + c.MinTLSVersion)
 	}

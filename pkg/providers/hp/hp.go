@@ -56,7 +56,6 @@ func (h *Hp) Authenticate(ctx context.Context, bindDN string, bindPassword []byt
 }
 
 func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-
 	searchResults := ldap.SearchResult{}
 	username := servercontext.GetDn(ctx)
 

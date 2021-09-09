@@ -77,7 +77,6 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 		auth = &dell.Dell{Logger: bmcLdap.logger, Config: bmcLdap.config}
 	default:
 		auth = &generic.Generic{Logger: bmcLdap.logger, Config: bmcLdap.config}
-
 	}
 
 	//defer remoteLdapClient.Close()
