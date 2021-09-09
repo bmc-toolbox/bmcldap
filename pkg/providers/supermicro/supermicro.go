@@ -58,8 +58,7 @@ func extractUsername(filter string) string {
 	return username
 }
 
-func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-	searchResults := ldap.SearchResult{}
+func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) (results []*ldap.SearchResult, err error) {
 	// In its first search request, SuperMicro does a search with the login username
 	//   as its search filter. We extract the username from that request.
 	username := extractUsername(req.Filter.String())
@@ -69,7 +68,7 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 
 	if err != nil {
 		s.Logger.Warn(err)
-		return []*ldap.SearchResult{&searchResults}, err
+		return results, err
 	}
 
 	// Unfortunately, SuperMicro doesn't have the flexibility of searching the user's membership
@@ -93,7 +92,7 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 				Attributes:   req.Attributes,
 			}
 
-			s.Logger.Debug(fmt.Sprintf("Querying remote LDAP with SuperMicro search request: %+v", searchRequest))
+			s.Logger.Debug(fmt.Sprintf("Querying remote LDAP server with SuperMicro search request: %+v", searchRequest))
 			sr, err := ldapClient.Search(&searchRequest)
 			if err != nil {
 				s.Logger.Warn(fmt.Sprintf("Remote LDAP SuperMicro search request for DN %s returned an error: %s", lookupDN, err))
@@ -112,5 +111,5 @@ func (s *Supermicro) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]
 	}
 
 	s.Logger.Info(fmt.Sprintf("User %s not found in all hard-coded groups!", username))
-	return []*ldap.SearchResult{&searchResults}, nil
+	return results, nil
 }

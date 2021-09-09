@@ -55,8 +55,7 @@ func (h *Hp) Authenticate(ctx context.Context, bindDN string, bindPassword []byt
 	return true
 }
 
-func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-	searchResults := ldap.SearchResult{}
+func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) (results []*ldap.SearchResult, err error) {
 	username := servercontext.GetDn(ctx)
 
 	ldapClient, err := providers.ConnectRemoteServer(ctx, h.Config.ClientCaCert, h.Config.RemoteServerName, h.Config.RemoteServerPortTLS)
@@ -64,54 +63,48 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.Se
 
 	if err != nil {
 		h.Logger.Warn(err)
-		return []*ldap.SearchResult{&searchResults}, err
+		return results, err
 	}
 
-	//look up the group base DN in our map of authorized DNs
-	for group, groupBaseDN := range h.Config.AuthorizedDNs {
-		var lookupDN string
+	reqDN := req.BaseDN
+	h.Logger.Debug("Starting HP search request for " + reqDN + ", request filter is " + req.Filter.String())
+	mainDN := strings.Replace(reqDN, "cn=hp,", "", -1)
+	h.Logger.Debug("Lookup DN is " + mainDN)
 
-		if strings.Contains(strings.ToLower(req.BaseDN), group) {
-			lookupDN = groupBaseDN
-		} else {
+	for _, prefix := range h.Config.Prefixes {
+		dn := strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
+		filter := &ldap.EqualityMatch{
+			Attribute: "memberUid",
+			Value:     []byte(username),
+		}
+
+		searchRequest := ldap.SearchRequest{
+			BaseDN:       dn,
+			Scope:        ldap.ScopeWholeSubtree,
+			DerefAliases: ldap.DerefAlways,
+			SizeLimit:    0,
+			TimeLimit:    0,
+			TypesOnly:    false,
+			Filter:       filter,
+			Attributes:   req.Attributes,
+		}
+
+		h.Logger.Debug(fmt.Sprintf("Querying remote LDAP server with HP search request: %+v", searchRequest))
+		sr, err := ldapClient.Search(&searchRequest)
+		if err != nil {
+			h.Logger.Warn(fmt.Sprintf("Remote LDAP HP search request for DN %s returned an error: %s", dn, err))
 			continue
 		}
 
-		for _, prefix := range h.Config.Prefixes {
-			u := prefix + username
-			filter := &ldap.EqualityMatch{
-				Attribute: "memberUid",
-				Value:     []byte(u),
-			}
-
-			searchRequest := ldap.SearchRequest{
-				BaseDN:       lookupDN,
-				Scope:        ldap.ScopeWholeSubtree,
-				DerefAliases: ldap.DerefAlways,
-				SizeLimit:    0,
-				TimeLimit:    0,
-				TypesOnly:    false,
-				Filter:       filter,
-				Attributes:   req.Attributes,
-			}
-
-			h.Logger.Debug(fmt.Sprintf("Querying remote LDAP with search request: %+v", searchRequest))
-			sr, err := ldapClient.Search(&searchRequest)
-			if err != nil {
-				h.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
-				continue
-			}
-
-			if len(sr) > 0 {
-				h.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %#v", sr))
-				h.Logger.Info(fmt.Sprintf("User %s found in group %s", u, lookupDN))
-				sr[0].DN = req.BaseDN
-				return sr, nil
-			}
+		if len(sr) > 0 {
+			h.Logger.Debug(fmt.Sprintf("Remote LDAP search response: %+v", sr[0]))
+			h.Logger.Info(fmt.Sprintf("User %s found in group %s", username, dn))
+			sr[0].DN = reqDN
+			return sr, nil
 		}
-
-		h.Logger.Info(fmt.Sprintf("(Prefixed?) user %s not found in group %s", username, lookupDN))
 	}
 
-	return []*ldap.SearchResult{&searchResults}, nil
+	h.Logger.Info(fmt.Sprintf("User %s not found in group %s", username, reqDN))
+
+	return results, nil
 }

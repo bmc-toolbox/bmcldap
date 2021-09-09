@@ -160,7 +160,7 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 	}
 
 	var auth Authenticator
-	//identify vendor
+	// Start: Vendor Identification
 	if strings.Contains(req.BaseDN, "cn=hp") {
 		bmcLdap.logger.Debug(fmt.Sprintf("BMC identified as HP based on baseDN: %s", req.BaseDN))
 		auth = &hp.Hp{Logger: bmcLdap.logger, Config: bmcLdap.config}
@@ -181,8 +181,9 @@ func (bmcLdap *BmcLdap) Search(ctx ldap.Context, req *ldap.SearchRequest) (res *
 			BaseResponse: ldap.BaseResponse{
 				Code: ldap.ResultInsufficientAccessRights,
 			},
-		}, fmt.Errorf("unrecognized vendor BaseDN: %s", req.BaseDN)
+		}, fmt.Errorf("Unrecognized vendor! BaseDN: %s", req.BaseDN)
 	}
+	// End: Vendor Identification
 
 	searchResults, err := auth.Authorize(sess.context, req)
 	if err != nil {
