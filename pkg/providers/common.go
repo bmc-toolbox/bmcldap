@@ -35,14 +35,14 @@ func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string
 	go func(clientChan chan<- *ldap.Client) {
 		tlsCfg, err := clientTLSConfig(clientCaCert, server)
 		if err != nil {
-			log.Printf("Unable to connect to remote ldap server: %s", err)
+			log.Printf("Unable to connect to remote LDAP server: %s", err)
 			return
 		}
 
 		serverAddress := fmt.Sprintf("%s:%d", server, port)
 		client, err = ldap.DialTLS("tcp", serverAddress, tlsCfg)
 		if err != nil {
-			log.Printf("Unable to connect to remote ldap server: %s", err)
+			log.Printf("Unable to connect to remote LDAP server: %s", err)
 			return
 		}
 
@@ -54,7 +54,7 @@ func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string
 		close(clientChan)
 		return client, nil
 	case <-ctx.Done():
-		return client, errors.New("LDAP client went away while connecting to backend LDAP server")
+		return client, errors.New("LDAP client went away while connecting to backend LDAP server!")
 	}
 
 }
