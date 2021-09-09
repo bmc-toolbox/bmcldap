@@ -57,7 +57,6 @@ func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []b
 }
 
 func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-
 	searchResults := ldap.SearchResult{}
 
 	ldapClient, err := providers.ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
@@ -68,40 +67,43 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		return []*ldap.SearchResult{&searchResults}, err
 	}
 
-	// Dell Search request 1
-	// BMC validating the user account is present under the base DN
-	// pass this request to the backend ldap server and return the response to the client as is.
-	if strings.Contains(req.Filter.String(), "objectClass=posixAccount") {
+	d.Logger.Debug("Filter string is " + req.Filter.String())
 
-		// req.BaseDN at this point is set to "cn=dell"
-		// it needs to be updated to a valid search base (starting point in the tree)
+	// Dell Search request 1: BMC validating the user account is present under the base DN.
+	// Pass this request to the backend LDAP server and return the response to the client as is.
+	if strings.Contains(req.Filter.String(), "objectClass=posixAccount") {
+		// req.BaseDN at this point is set to "cn=dell".
+		// This needs to be updated to a valid search base (starting point in the tree).
 		req.BaseDN = d.Config.BaseDN
 
+		d.Logger.Debug("Starting Dell Search 1 for " + req.BaseDN)
 		searchResponse, err := ldapClient.Search(req)
 		if err != nil {
-			d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+			d.Logger.Warn(fmt.Sprintf("Remote LDAP search 1 request returned an error: %s", err))
 		}
 		return searchResponse, nil
 	}
 
-	// Dell Search request 2
-	// BMC validating the user account is a member of the ldap group
-	// pass this request to the backend ldap server and return the response to the client as is.
+	// Dell Search request 2: BMC validating the user account is a member of the LDAP group.
+	// Pass this request to the backend LDAP server and return the response to the client as is.
 	if strings.Contains(req.Filter.String(), "memberUid=") {
-		// req.BaseDN at this point would contain "cn=dell", to identify this BMC as dell.
-		// example "cn=dell,cn=fooUsers,ou=Group,dc=example,dc=com",
-		// we strip out "cn=dell," from the request Base DN
+		// req.BaseDN at this point would contain "cn=dell", to identify this BMC as Dell.
+		// (e.g. "cn=dell,cn=fooUsers,ou=Group,dc=example,dc=com")
+		d.Logger.Debug("Starting Dell Search 2 for " + req.BaseDN)
 
+		// Strip out "cn=dell," from the request Base DN.
 		mainDN := strings.Replace(req.BaseDN, "cn=dell,", "", 1)
 
 		for _, prefix := range d.Config.Prefixes {
 			req.BaseDN = strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
+			d.Logger.Debug("Performing actual search for " + req.BaseDN)
 			searchResponse, err := ldapClient.Search(req)
 			if err != nil {
-				d.Logger.Warn(fmt.Sprintf("Remote LDAP search request returned an err: %s", err))
+				d.Logger.Warn(fmt.Sprintf("Remote LDAP search 2 request returned an error: %s", err))
 			}
 
 			if len(searchResponse) > 0 {
+				d.Logger.Debug(fmt.Sprintf("Found %v from Dell Search 2 for %v", searchResponse[0].DN, req.BaseDN))
 				return searchResponse, nil
 			}
 		}

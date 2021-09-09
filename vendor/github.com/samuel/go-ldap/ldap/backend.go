@@ -92,12 +92,12 @@ func (debugBackend) Search(ctx Context, req *SearchRequest) (*SearchResponse, er
 			Message:   "",
 		},
 		Results: []*SearchResult{
-			&SearchResult{
+			{
 				DN: "cn=admin,dc=example,dc=com",
 				Attributes: map[string][][]byte{
-					"objectClass": [][]byte{[]byte("person")},
-					"cn":          [][]byte{[]byte("admin")},
-					"uid":         [][]byte{[]byte("123")},
+					"objectClass": {[]byte("person")},
+					"cn":          {[]byte("admin")},
+					"uid":         {[]byte("123")},
 				},
 			},
 		},
