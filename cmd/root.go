@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log/syslog"
 	"os"
 
@@ -29,6 +30,7 @@ var (
 	cfgFile string
 	logger  *logrus.Logger
 	debug   bool
+	output  bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -51,10 +53,13 @@ func Execute() {
 }
 
 func setupLogger() {
-
-	//setup logging
 	logger = logrus.New()
-	logger.Out = os.Stdout
+
+	if output {
+		logger.Out = os.Stdout
+	} else {
+		logger.SetOutput(ioutil.Discard)
+	}
 
 	hook, err := logrusSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "bmcldap")
 	if err != nil {
@@ -75,12 +80,12 @@ func init() {
 	cfgFile = fmt.Sprintf("%s/.bmcldap.yml", home)
 
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
+	rootCmd.PersistentFlags().BoolVarP(&output, "output", "o", false, "Enable logging on STDOUT. Otherwise, it's only on SysLog.")
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", cfgFile, "Configuration file for bmcldap.")
 	cobra.OnInitialize(initConfig)
 }
 
 func initConfig() {
-
 	viper.SetConfigFile(cfgFile)
 	err := viper.ReadInConfig()
 	if err != nil {

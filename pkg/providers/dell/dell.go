@@ -96,7 +96,15 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 
 		for _, prefix := range d.Config.Prefixes {
 			req.BaseDN = strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
-			d.Logger.Debug("Performing actual search for " + req.BaseDN)
+
+			// Indicate that we have changed something...
+			msg := "Performing actual search for " + req.BaseDN
+			if prefix != "" {
+				msg += " after adding " + prefix
+			}
+			d.Logger.Debug(msg)
+
+			// The actual search.
 			searchResponse, err := ldapClient.Search(req)
 			if err != nil {
 				d.Logger.Warn(fmt.Sprintf("Remote LDAP search 2 request returned an error: %s", err))
