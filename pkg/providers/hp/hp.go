@@ -73,6 +73,15 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) (results []
 
 	for _, prefix := range h.Config.Prefixes {
 		dn := strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
+
+		// Indicate that we have changed something...
+		msg := "Performing actual search for " + req.BaseDN
+		if prefix != "" {
+			msg += " after adding " + prefix
+		}
+		h.Logger.Debug(msg)
+
+		// Preparing...
 		filter := &ldap.EqualityMatch{
 			Attribute: "memberUid",
 			Value:     []byte(username),
@@ -89,6 +98,7 @@ func (h *Hp) Authorize(ctx context.Context, req *ldap.SearchRequest) (results []
 			Attributes:   req.Attributes,
 		}
 
+		// The actual search.
 		h.Logger.Debug(fmt.Sprintf("Querying remote LDAP server with HP search request: %+v", searchRequest))
 		sr, err := ldapClient.Search(&searchRequest)
 		if err != nil {
