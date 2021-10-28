@@ -29,7 +29,6 @@ import (
 
 // ConnectRemoteServer returns a client to a remote ldap server
 func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string, port int) (client *ldap.Client, err error) {
-
 	clientChan := make(chan *ldap.Client)
 
 	go func(clientChan chan<- *ldap.Client) {
@@ -56,7 +55,6 @@ func ConnectRemoteServer(ctx context.Context, clientCaCert string, server string
 	case <-ctx.Done():
 		return client, errors.New("LDAP client went away while connecting to backend LDAP server!")
 	}
-
 }
 
 // returns tls config with RootCA certs loaded

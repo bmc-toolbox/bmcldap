@@ -27,7 +27,6 @@ import (
 )
 
 func main() {
-
 	setupProfiling()
 	cmd.Execute()
 }

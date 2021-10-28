@@ -56,18 +56,14 @@ func (d *Dell) Authenticate(ctx context.Context, bindDN string, bindPassword []b
 	return true
 }
 
-func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.SearchResult, error) {
-	searchResults := ldap.SearchResult{}
-
+func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) (results []*ldap.SearchResult, err error) {
 	ldapClient, err := providers.ConnectRemoteServer(ctx, d.Config.ClientCaCert, d.Config.RemoteServerName, d.Config.RemoteServerPortTLS)
 	defer ldapClient.Close()
 
 	if err != nil {
 		d.Logger.Warn(err)
-		return []*ldap.SearchResult{&searchResults}, err
+		return results, err
 	}
-
-	d.Logger.Debug("Filter string is " + req.Filter.String())
 
 	// Dell Search request 1: BMC validating the user account is present under the base DN.
 	// Pass this request to the backend LDAP server and return the response to the client as is.
@@ -76,10 +72,12 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		// This needs to be updated to a valid search base (starting point in the tree).
 		req.BaseDN = d.Config.BaseDN
 
-		d.Logger.Debug("Starting Dell Search 1 for " + req.BaseDN)
+		d.Logger.Debug("Starting Dell Search 1 for " + req.BaseDN + ", request filter is " + req.Filter.String())
 		searchResponse, err := ldapClient.Search(req)
 		if err != nil {
-			d.Logger.Warn(fmt.Sprintf("Remote LDAP search 1 request returned an error: %s", err))
+			d.Logger.Warn(fmt.Sprintf("Remote LDAP Search 1 request returned an error: %s", err))
+		} else {
+			d.Logger.Info(fmt.Sprintf("Remote LDAP Search 1 request succeeded, response: %+v", searchResponse))
 		}
 		return searchResponse, nil
 	}
@@ -89,7 +87,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 	if strings.Contains(req.Filter.String(), "memberUid=") {
 		// req.BaseDN at this point would contain "cn=dell", to identify this BMC as Dell.
 		// (e.g. "cn=dell,cn=fooUsers,ou=Group,dc=example,dc=com")
-		d.Logger.Debug("Starting Dell Search 2 for " + req.BaseDN)
+		d.Logger.Debug("Starting Dell Search 2 for " + req.BaseDN + ", request filter is " + req.Filter.String())
 
 		// Strip out "cn=dell," from the request Base DN.
 		mainDN := strings.Replace(req.BaseDN, "cn=dell,", "", 1)
@@ -98,7 +96,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 			req.BaseDN = strings.Replace(mainDN, "cn=", "cn="+prefix, -1)
 
 			// Indicate that we have changed something...
-			msg := "Performing actual search for " + req.BaseDN
+			msg := "Performing actual search for " + req.BaseDN + ", request filter is " + req.Filter.String()
 			if prefix != "" {
 				msg += " after adding " + prefix
 			}
@@ -107,7 +105,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 			// The actual search.
 			searchResponse, err := ldapClient.Search(req)
 			if err != nil {
-				d.Logger.Warn(fmt.Sprintf("Remote LDAP search 2 request returned an error: %s", err))
+				d.Logger.Warn(fmt.Sprintf("Remote LDAP Search 2 request returned an error: %s", err))
 			}
 
 			if len(searchResponse) > 0 {
@@ -117,5 +115,7 @@ func (d *Dell) Authorize(ctx context.Context, req *ldap.SearchRequest) ([]*ldap.
 		}
 	}
 
-	return []*ldap.SearchResult{&searchResults}, nil
+	d.Logger.Info(fmt.Sprintf("Filter %s not found in group %s", req.Filter.String(), req.BaseDN))
+
+	return results, nil
 }

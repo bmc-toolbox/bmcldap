@@ -40,7 +40,6 @@ type session struct {
 }
 
 func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindResponse *ldap.BindResponse, err error) {
-
 	log := bmcLdap.logger
 
 	if req.DN == "" {
@@ -98,7 +97,7 @@ func (bmcLdap *BmcLdap) Bind(ctx ldap.Context, req *ldap.BindRequest) (bindRespo
 		log.Debug(fmt.Sprintf("Bind accept response %#v", bindResponse))
 		return bindResponse, err
 	} else {
-		log.Debug(fmt.Sprintf("BIND reject response %#v", bindResponse))
+		log.Debug(fmt.Sprintf("Bind reject response %#v", bindResponse))
 		return bindResponse, err
 	}
 }
@@ -276,6 +275,5 @@ func (bmcLdap *BmcLdap) ModifyDN(ctx ldap.Context, req *ldap.ModifyDNRequest) (*
 
 // Method added to conform to ldap.Server interface
 func (bmcLdap *BmcLdap) PasswordModify(ctx ldap.Context, req *ldap.PasswordModifyRequest) ([]byte, error) {
-
 	return []byte{}, nil
 }
