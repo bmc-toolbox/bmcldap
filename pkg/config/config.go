@@ -21,6 +21,7 @@ type Config struct {
 	BaseDN              string
 	Config              string
 	MinTLSVersion       string
+	CipherSuites        []string
 	RemoteServerName    string
 	RemoteServerPortTLS int
 	CaCert              string

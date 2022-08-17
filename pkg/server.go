@@ -86,9 +86,39 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *config.Config) *tls.Config {
 		}).Warning("Using TLS 1.1, ignoring unsupported version " + c.MinTLSVersion)
 	}
 
+	// Please Note: TLSv1.3 Ciphers cannot be configured as of today
+	var cipherSuitesTLS []uint16
+
+	if len(c.CipherSuites) > 0 {
+
+		// Check if the Cipher Keys Belong to Secure Ciphers
+		for _, secureCipher := range tls.CipherSuites() {
+			if sliceContains(c.CipherSuites, secureCipher.Name) {
+				cipherSuitesTLS = append(cipherSuitesTLS, secureCipher.ID)
+			}
+		}
+		// In case anyone wants to use Insecure Ciphers for compatibility issues
+		for _, inSecureCipher := range tls.InsecureCipherSuites() {
+			if sliceContains(c.CipherSuites, inSecureCipher.Name) {
+				cipherSuitesTLS = append(cipherSuitesTLS, inSecureCipher.ID)
+			}
+		}
+	}
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 		MinVersion:         uint16(minVersion),
+		CipherSuites:       cipherSuitesTLS,
 	}
+}
+
+// A function to check if a slice contains a string
+func sliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
