@@ -86,23 +86,19 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *config.Config) *tls.Config {
 		}).Warning("Using TLS 1.1, ignoring unsupported version " + c.MinTLSVersion)
 	}
 
-	// Please Note: TLSv1.3 Ciphers cannot be configured as of today
+	// Please Note: TLSv1.3 Ciphers cannot be defined as of today
 	var cipherSuitesTLS []uint16
 
 	if len(c.CipherSuites) > 0 {
-
-		// Check if the Cipher Keys Belong to Secure Ciphers
-		for _, secureCipher := range tls.CipherSuites() {
+		// Including Both Secure and Insecure Ciphers, in-case anyone wants to use Insecure ones for compatibility reasons
+		allCipherSuites := append(tls.CipherSuites(), tls.InsecureCipherSuites()...)
+		// Check if the Cipher Keys Belong to Ciphers supported by Go TLS module
+		for _, secureCipher := range allCipherSuites {
 			if sliceContains(c.CipherSuites, secureCipher.Name) {
 				cipherSuitesTLS = append(cipherSuitesTLS, secureCipher.ID)
 			}
 		}
-		// In case anyone wants to use Insecure Ciphers for compatibility issues
-		for _, inSecureCipher := range tls.InsecureCipherSuites() {
-			if sliceContains(c.CipherSuites, inSecureCipher.Name) {
-				cipherSuitesTLS = append(cipherSuitesTLS, inSecureCipher.ID)
-			}
-		}
+
 	}
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
