@@ -21,6 +21,7 @@ func setup() (*Config, *logrus.Logger) {
 		RemoteServerPortTLS: 636,
 		Debug:               true,
 		MinTLSVersion:       "1.2",
+		CipherSuites:        []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
 		PortTLS:             443,
 		PortInsecure:        386,
 		Cert:                "/etc/bmcldap/server.pem",

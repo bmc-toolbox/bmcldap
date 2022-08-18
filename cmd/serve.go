@@ -46,6 +46,7 @@ func serve() {
 		RemoteServerPortTLS:     viper.GetInt("RemoteServerPortTLS"),
 		Debug:                   viper.GetBool("Debug"),
 		MinTLSVersion:           viper.GetString("MinTLSVersion"),
+		CipherSuites:            viper.GetStringSlice("CipherSuites"),
 		PortTLS:                 viper.GetInt("PortTLS"),
 		PortInsecure:            viper.GetInt("PortInsecure"),
 		Cert:                    viper.GetString("Cert"),

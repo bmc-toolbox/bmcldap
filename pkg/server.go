@@ -86,9 +86,35 @@ func (bmcLdap *BmcLdap) LoadTlsConfig(c *config.Config) *tls.Config {
 		}).Warning("Using TLS 1.1, ignoring unsupported version " + c.MinTLSVersion)
 	}
 
+	// Please Note: TLSv1.3 Ciphers cannot be defined as of today
+	var cipherSuitesTLS []uint16
+
+	if len(c.CipherSuites) > 0 {
+		// Including Both Secure and Insecure Ciphers, in-case anyone wants to use Insecure ones for compatibility reasons
+		allCipherSuites := append(tls.CipherSuites(), tls.InsecureCipherSuites()...)
+		// Check if the Cipher Keys Belong to Ciphers supported by Go TLS module
+		for _, secureCipher := range allCipherSuites {
+			if sliceContains(c.CipherSuites, secureCipher.Name) {
+				cipherSuitesTLS = append(cipherSuitesTLS, secureCipher.ID)
+			}
+		}
+
+	}
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 		MinVersion:         uint16(minVersion),
+		CipherSuites:       cipherSuitesTLS,
 	}
+}
+
+// A function to check if a slice contains a string
+func sliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
